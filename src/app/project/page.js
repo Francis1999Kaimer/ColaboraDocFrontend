@@ -241,7 +241,7 @@ function EnhancedDocumentationView({ projectId }) {
             <div className="text-center py-10 bg-white rounded-lg shadow">
                 <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
                 <p className="mt-4 text-lg text-gray-500">
-                    Seleccione una categoría de "Entregables" para ver los documentos.
+                    Seleccione una categoría de Entregables para ver los documentos.
                 </p>
             </div>
         )}
