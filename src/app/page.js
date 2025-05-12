@@ -2,7 +2,7 @@
 export default function Home() {
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      {/* Imagen principal */}
+   
       <div className="w-full mx-auto px-6 pt-4" >
         <img
           src="/images/fondo.jpg"
@@ -11,7 +11,7 @@ export default function Home() {
         />
       </div>
 
-      {/* Sección central */}
+  
       <section className="text-center px-6 py-10 max-w-5xl mx-auto">
         <h1 className="text-3xl md:text-4xl font-bold mb-4">
           Gestión Documentaria para Proyectos de Construcción
@@ -20,7 +20,7 @@ export default function Home() {
           Plataforma integral para colaborar en documentación de proyectos
         </p>
 
-        {/* Beneficios */}
+    
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <div className="text-3xl mb-2">🗂️</div>
@@ -44,11 +44,10 @@ export default function Home() {
             </p>
           </div>
         </div>
-
-        {/* Portabilidad - Centrado */}
+        
         <div className="flex justify-center mt-8">
           <div className="text-center">
-            <div className="text-3xl mb-2">🌐</div> {/* Cambiado el emoji para representar mejor la portabilidad */}
+            <div className="text-3xl mb-2">🌐</div>
             <h3 className="font-semibold text-lg mb-1">Portabilidad</h3>
             <p className="text-gray-600">
               Acceso web desde cualquier dispositivo

@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
-import { useAuth } from '../context/authcontext'; // Ajusta la ruta
+import { useAuth } from '../context/authcontext'; 
 
-const Loader = () => ( // Puedes mover este Loader a un componente reutilizable
+const Loader = () => ( 
   <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 p-4">
     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
   </div>
@@ -14,14 +14,20 @@ const Loader = () => ( // Puedes mover este Loader a un componente reutilizable
 
 export default function Login() {
   const router = useRouter();
-  const { user, login: authLogin, loading: authLoading, checkUserLoggedIn } = useAuth(); // Renombrar login a authLogin
+  const { user, login: authLogin, loading: authLoading, checkUserLoggedIn } = useAuth(); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackType, setFeedbackType] = useState(''); 
+
+ 
+  const [validationErrors, setValidationErrors] = useState({});
+
   useEffect(() => {
-    // Si el usuario ya está logueado y no estamos en proceso de carga inicial del auth, redirigir
+
     if (!authLoading && user) {
       router.push('/dashboard');
     }
@@ -29,6 +35,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFeedbackMessage('');
     setMensaje('');
     setIsSubmitting(true);
     try {
@@ -41,24 +48,53 @@ export default function Login() {
       });
   
       console.log('Respuesta del servidor:', res.data);
-      authLogin(res.data); // Usar la función login del AuthContext
-      // No es necesario guardar en localStorage aquí, AuthContext lo hace
+      authLogin(res.data); 
+
       router.push('/dashboard');
     } catch (err) {
-      console.error('Error al iniciar sesión:', err);
-      setMensaje(err.response?.data?.message || err.response?.data || 'Error al iniciar sesión');
+     let genericErrorMessage = 'Error al ingresa';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (typeof errorData === 'string') {
+    
+          setFeedbackMessage(errorData);
+        } else if (typeof errorData.message === 'string') {
+     
+          setFeedbackMessage(errorData.message);
+        } else if (typeof errorData.error === 'string') {
+        
+            setFeedbackMessage(errorData.error);
+        } else if (typeof errorData === 'object' && Object.keys(errorData).length > 0) {
+    
+          setValidationErrors(errorData);
+          setFeedbackMessage('Por favor, corrige los errores indicados en el formulario.');
+        } else {
+          setFeedbackMessage(genericErrorMessage);
+        }
+      } else if (err.request) {
+      
+        setFeedbackMessage('No se pudo conectar al servidor. Verifica tu conexión a internet.');
+      } else {
+ 
+        setFeedbackMessage(genericErrorMessage);
+      }
+      setFeedbackType('error');
+      console.error("Error en el login", err);
+
+
+
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (authLoading || (!authLoading && user)) { // Muestra loader si está cargando auth o si hay usuario (esperando redirect)
+  if (authLoading || (!authLoading && user)) { 
     return <Loader />;
   }
 
   return (
     <div className="flex h-full bg-white text-gray-900">
-      {/* Formulario a la izquierda */}
+
       <div className="w-full md:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <h2 className="text-3xl font-bold mb-6 text-center">Iniciar Sesión</h2>
@@ -92,6 +128,18 @@ export default function Login() {
               />
             </div>
 
+            {feedbackMessage && !Object.keys(validationErrors).length && ( 
+                <p className={`text-sm ${feedbackType === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                {feedbackMessage}
+                </p>
+            )}
+             {feedbackMessage && Object.keys(validationErrors).length > 0 && ( 
+                <p className={`text-sm text-red-600`}>
+                {feedbackMessage}
+                </p>
+            )}
+
+
             <button
               type="submit"
               className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition disabled:opacity-50"
@@ -114,7 +162,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Imagen a la derecha */}
+
       <div className="hidden md:block md:w-1/2">
         <img
           src="/images/fondoRegistro.png"

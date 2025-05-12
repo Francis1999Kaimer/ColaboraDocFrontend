@@ -2,14 +2,14 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth } from '../context/authcontext'; // Ajusta la ruta si es necesario
+import { useAuth } from '../context/authcontext'; 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // Para saber la ruta actual
+import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, logout, loading } = useAuth();
-  const pathname = usePathname(); // Obtener la ruta actual
+  const pathname = usePathname(); 
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -19,10 +19,9 @@ export default function Navbar() {
     setIsMenuOpen(false);
   };
 
-  // No mostrar botones específicos si estamos en sus respectivas páginas y no logueados
   const showLoginButton = !user && pathname !== '/login';
   const showRegisterButton = !user && pathname !== '/register';
-  const isDashboardPage = pathname === '/dashboard'; // Nueva variable para claridad
+  const isDashboardPage = pathname === '/dashboard'; 
 
   const navLinks = [
     { href: "/", label: "Inicio" },
@@ -57,7 +56,6 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            {/* Mostrar enlace a Dashboard solo si hay usuario Y NO estamos en la página de Dashboard */}
             {user && !isDashboardPage && (
               <Link href="/dashboard" className="hover:text-blue-600">
                 Dashboard
@@ -122,7 +120,7 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            {/* Mostrar enlace a Dashboard solo si hay usuario Y NO estamos en la página de Dashboard */}
+  
             {user && !isDashboardPage && (
                <Link href="/dashboard" className="hover:text-blue-600 py-2" onClick={closeMenu}>
                  Dashboard
