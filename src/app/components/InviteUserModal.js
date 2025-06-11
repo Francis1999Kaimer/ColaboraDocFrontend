@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import useProjectPermissions from '../hooks/useProjectPermissions';
 
 export default function InviteUserModal({ isOpen, onClose, projectId, onUserInvited }) {
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -11,6 +12,9 @@ export default function InviteUserModal({ isOpen, onClose, projectId, onUserInvi
   const [error, setError] = useState('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+
+  
+  const { canInviteUsers } = useProjectPermissions(projectId);
 
   const fetchAllUsers = useCallback(async () => {
     if (!isOpen) return; 
@@ -32,9 +36,15 @@ export default function InviteUserModal({ isOpen, onClose, projectId, onUserInvi
     fetchAllUsers();
   }, [fetchAllUsers]);
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    
+    if (!canInviteUsers) {
+      setError("No tienes permisos para invitar usuarios a este proyecto.");
+      return;
+    }
+    
     if (!selectedUserId || !roleCode.trim()) {
       setError("Debe seleccionar un usuario y un rol.");
       return;

@@ -1,4 +1,4 @@
-// app/login/page.js (o donde tengas tu página de login)
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';

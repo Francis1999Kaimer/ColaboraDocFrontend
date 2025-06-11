@@ -1,9 +1,10 @@
-// app/dashboard/page.js
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/authcontext';
 import MyInvitations from '../components/MyInvitations'; 
+import NotificationsView from '../components/NotificationsView';
 import axios from 'axios';
 import Link from 'next/link';
 
@@ -119,18 +120,118 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
 };
 
 
-const ProjectCard = ({ project }) => (
-  <Link 
-    href={`/project?projectId=${project.idproject}&projectName=${encodeURIComponent(project.name)}`} 
-    passHref
-  >
-    <div className="block bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer">
-      <h3 className="text-xl font-semibold text-blue-700 mb-2">{project.name}</h3>
-      <p className="text-gray-600 text-sm">{"Descripción: " +project.description   || "Sin descripción."}</p>
-      <p className="text-gray-600 text-sm">{"ID:          " + project.idproject}</p>
+const ProjectCard = ({ project, onDelete }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async (e) => {
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    
+    if (!confirm(`¿Estás seguro de que quieres eliminar el proyecto "${project.name}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete(project.idproject);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Error al eliminar el proyecto. Por favor intenta de nuevo.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="relative bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+      <Link 
+        href={`/project?projectId=${project.idproject}&projectName=${encodeURIComponent(project.name)}`} 
+        passHref
+      >
+        <div className="block cursor-pointer pr-10">
+          <h3 className="text-xl font-semibold text-blue-700 mb-2">{project.name}</h3>
+          <p className="text-gray-600 text-sm">{"Descripción: " + project.description || "Sin descripción."}</p>
+          <p className="text-gray-600 text-sm">{"ID:          " + project.idproject}</p>
+        </div>
+      </Link>
+      
+      <button
+        onClick={handleDelete}
+        disabled={isDeleting}
+        className="absolute top-4 right-4 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Eliminar proyecto"
+      >
+        {isDeleting ? (
+          <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        )}
+      </button>
     </div>
-  </Link>
-);
+  );
+};
+
+const DeletedProjectCard = ({ project, onRestore }) => {
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleRestore = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm(`¿Estás seguro de que quieres restaurar el proyecto "${project.name}"?`)) {
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      await onRestore(project.idproject);
+    } catch (error) {
+      console.error('Error restoring project:', error);
+      alert('Error al restaurar el proyecto. Por favor intenta de nuevo.');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  return (
+    <div className="relative bg-red-50 border border-red-200 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+      <div className="pr-10">
+        <div className="flex items-center mb-2">
+          <TrashIcon className="text-red-500 mr-2 flex-shrink-0" />
+          <h3 className="text-xl font-semibold text-gray-700">{project.name}</h3>
+        </div>
+        <p className="text-gray-600 text-sm mb-1">{"Descripción: " + (project.description || "Sin descripción.")}</p>
+        <p className="text-gray-600 text-sm mb-2">{"ID: " + project.idproject}</p>
+        {project.deletedAt && (
+          <p className="text-red-600 text-xs">
+            Eliminado: {new Date(project.deletedAt).toLocaleDateString('es-ES', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
+        )}
+      </div>
+      
+      <button
+        onClick={handleRestore}
+        disabled={isRestoring}
+        className="absolute top-4 right-4 p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Restaurar proyecto"
+      >
+        {isRestoring ? (
+          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        ) : (
+          <RestoreIcon />
+        )}
+      </button>
+    </div>
+  );
+};
 
 
 const EnvelopeIcon = (props) => (
@@ -144,17 +245,214 @@ const BellIcon = (props) => (
   </svg>
 );
 
-
-
-const NotificationsView = () => (
-  <div className="p-4">
-    <h3 className="text-lg font-semibold text-gray-700 mb-3">Notificaciones</h3>
-    <div className="text-center text-gray-500 py-8">
-      <BellIcon className="mx-auto h-10 w-10 mb-2" />
-      <p>No hay notificaciones nuevas.</p>
-    </div>
-  </div>
+const TrashIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-5 w-5 ${props.className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+  </svg>
 );
+
+const RestoreIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-5 w-5 ${props.className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+  </svg>
+);
+
+const DatabaseIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-5 w-5 ${props.className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125S3.75 19.903 3.75 17.625V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+  </svg>
+);
+
+
+const BackupButton = () => {
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+
+  const handleCreateBackup = async () => {
+    if (isCreatingBackup) return;
+
+    const confirmMessage = '¿Estás seguro de que quieres crear un backup de la base de datos?\n\nEsto puede tomar unos momentos.';
+    
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsCreatingBackup(true);
+    try {
+      const response = await axios.post(`${apiUrl}/api/admin/backup/create`, {}, { withCredentials: true });
+      
+      if (response.data.success) {
+        alert(`✅ Backup creado exitosamente.\n\nArchivo: ${response.data.filePath}\nFecha: ${new Date(response.data.timestamp).toLocaleString('es-ES')}`);
+      } else {
+        throw new Error(response.data.message || 'Error desconocido al crear backup');
+      }
+    } catch (err) {
+      console.error('Error creating backup:', err);
+      let errorMessage = "Error al crear el backup.";
+      
+      if (err.response?.status === 403) {
+        errorMessage = "No tienes permisos para crear backups del sistema.";
+      } else if (err.response?.status === 500) {
+        errorMessage = "Error interno del servidor al crear el backup.";
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      alert(`❌ Error: ${errorMessage}`);
+    } finally {
+      setIsCreatingBackup(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCreateBackup}
+      disabled={isCreatingBackup}
+      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      title="Crear backup de la base de datos"
+    >
+      {isCreatingBackup ? (
+        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      ) : (
+        <DatabaseIcon />
+      )}
+      <span>{isCreatingBackup ? 'Creando Backup...' : 'Crear Backup'}</span>
+    </button>
+  );
+};
+
+
+
+const DeletedProjectsView = ({ onRefresh }) => {
+  const [deletedProjects, setDeletedProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+
+  const fetchDeletedProjects = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.get(`${apiUrl}/api/projects/deleted`, { withCredentials: true });
+      if (Array.isArray(response.data)) {
+        setDeletedProjects(response.data);
+      } else {
+        setDeletedProjects([]);
+        setError("Los datos recibidos no tienen el formato esperado.");
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error al cargar proyectos eliminados.";
+      setError(errorMessage);
+      setDeletedProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiUrl]);
+
+  const handleRestoreProject = async (projectId) => {
+    try {
+      await axios.post(`${apiUrl}/api/projects/${projectId}/restore`, {}, { withCredentials: true });
+      
+      
+      setDeletedProjects(prev => prev.filter(p => p.idproject !== projectId));
+      
+      
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      alert('✅ Proyecto restaurado exitosamente.');
+    } catch (err) {
+      console.error('Error restoring project:', err);
+      let errorMessage = "Error al restaurar el proyecto.";
+      
+      if (err.response?.status === 403) {
+        errorMessage = "No tienes permisos para restaurar este proyecto.";
+      } else if (err.response?.status === 404) {
+        errorMessage = "Proyecto no encontrado.";
+      } else if (err.response?.status === 400) {
+        errorMessage = err.response?.data?.message || "El proyecto no se puede restaurar.";
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      alert(`❌ Error: ${errorMessage}`);
+      throw new Error(errorMessage);
+    }
+  };
+
+  useEffect(() => {
+    fetchDeletedProjects();
+  }, [fetchDeletedProjects]);
+
+  const filteredDeletedProjects = deletedProjects.filter(project =>
+    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  if (loading) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+          <span className="text-gray-600">Cargando proyectos eliminados...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center mb-4">
+        <TrashIcon className="text-red-500 mr-2" />
+        <h3 className="text-lg font-semibold text-gray-700">Proyectos Eliminados</h3>
+      </div>
+      
+      {deletedProjects.length > 0 && (
+        <div className="mb-4">
+          <input
+            type="search"
+            placeholder="Buscar proyectos eliminados..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+          />
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 mb-4 text-sm text-red-800 bg-red-100 rounded-md">
+          <span className="font-medium">Error:</span> {error}
+        </div>
+      )}
+
+      {!error && filteredDeletedProjects.length === 0 && (
+        <div className="text-center py-8">
+          <TrashIcon className="mx-auto h-12 w-12 text-gray-400 mb-2" />
+          <p className="text-gray-500">
+            {searchTerm ? 'No se encontraron proyectos eliminados con ese término.' : 'No hay proyectos eliminados.'}
+          </p>
+          {!searchTerm && (
+            <p className="text-gray-400 text-sm mt-1">
+              Los proyectos eliminados aparecerán aquí.
+            </p>
+          )}
+        </div>
+      )}
+
+      {!error && filteredDeletedProjects.length > 0 && (
+        <div className="space-y-3">
+          {filteredDeletedProjects.map((project) => (
+            <DeletedProjectCard
+              key={project.idproject}
+              project={project}
+              onRestore={handleRestoreProject}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 
 export default function Dashboard() {
@@ -167,9 +465,10 @@ export default function Dashboard() {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState('');
 
-
   const [searchTerm, setSearchTerm] = useState('');
 
+  
+  const [deletedProjectsCount, setDeletedProjectsCount] = useState(0);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
   const [activeRightTab, setActiveRightTab] = useState('invitations');
@@ -204,17 +503,51 @@ export default function Dashboard() {
     }
   }, [user, authLoading, apiUrl]);
 
+  
+  const fetchDeletedProjectsCount = useCallback(async () => {
+    if (!user || authLoading) return;
+    
+    try {
+      const response = await axios.get(`${apiUrl}/api/projects/deleted`, { withCredentials: true });
+      if (Array.isArray(response.data)) {
+        setDeletedProjectsCount(response.data.length);
+      }
+    } catch (err) {
+      
+      setDeletedProjectsCount(0);
+    }
+  }, [user, authLoading, apiUrl]);
+
+  useEffect(() => {
+    fetchDeletedProjectsCount();
+  }, [fetchDeletedProjectsCount]);
+
+  
+  const handleRefreshProjects = useCallback(() => {
+    fetchProjects();
+    fetchDeletedProjectsCount(); 
+  }, [fetchProjects, fetchDeletedProjectsCount]);
+
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]); 
-  
-  const handleCreateProject = async (projectData) => {
+    const handleCreateProject = async (projectData) => {
     try {
       await axios.post(`${apiUrl}/api/projects/create`, projectData, { withCredentials: true });
       await fetchProjects(); 
     } catch (err) {
       console.error('Dashboard: Error creating project:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || err.response?.data?.error || "Error al crear el proyecto."); 
+    }
+  };
+  const handleDeleteProject = async (projectId) => {
+    try {
+      await axios.delete(`${apiUrl}/api/projects/delete/${projectId}`, { withCredentials: true });
+      await fetchProjects(); 
+      await fetchDeletedProjectsCount(); 
+    } catch (err) {
+      console.error('Dashboard: Error deleting project:', err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || err.response?.data?.error || "Error al eliminar el proyecto.");
     }
   };
 
@@ -256,16 +589,18 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
-            <div className="bg-white shadow-md rounded-lg p-6">
+              <div className="bg-white shadow-md rounded-lg p-6">
               <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-800">Mis Proyectos</h2>
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="mt-4 sm:mt-0 px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 text-base"
-                >
-                  + Crear Nuevo Proyecto
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 text-base"
+                  >
+                    + Crear Nuevo Proyecto
+                  </button>
+                  <BackupButton />
+                </div>
               </div>
 
     
@@ -299,42 +634,55 @@ export default function Dashboard() {
                   </p>
                   {!searchTerm && <p className="text-gray-500 text-sm">¡Crea uno para empezar!</p>}
                 </div>
-              )}
-
-              {!projectsLoading && !projectsError && filteredProjects.length > 0 && (
+              )}              {!projectsLoading && !projectsError && filteredProjects.length > 0 && (
            
                 <div className="grid grid-cols-1 gap-6"> 
                   {filteredProjects.map((project) => ( 
-                    <ProjectCard key={project.idproject} project={project} /> 
+                    <ProjectCard key={project.idproject} project={project} onDelete={handleDeleteProject} /> 
                   ))}
                 </div>
               )}
             </div>
           </div>
-        </main>
-
-        <aside className="w-full md:w-[30%] lg:w-[25%] bg-white border-l border-gray-200 md:min-h-screen md:sticky md:top-0">
+        </main>        <aside className="w-full md:w-[30%] lg:w-[25%] bg-white border-l border-gray-200 md:min-h-screen md:sticky md:top-0">
           <div className="p-1 sticky top-0 bg-white z-10 border-b border-gray-200">
             <nav className="flex justify-around">
               <button
                 onClick={() => setActiveRightTab('invitations')}
-                className={`flex-1 py-2.5 px-2 text-center text-sm font-medium border-b-2 transition-colors
+                className={`flex-1 py-2.5 px-1 text-center text-xs font-medium border-b-2 transition-colors
                   ${activeRightTab === 'invitations' 
                     ? 'border-blue-600 text-blue-700' 
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
               >
-                <EnvelopeIcon className="inline-block mr-1.5 mb-0.5" />
-                Invitaciones
+                <EnvelopeIcon className="inline-block mr-1 mb-0.5" />
+                <span className="hidden sm:inline">Invitaciones</span>
+                <span className="sm:hidden">Invit.</span>
               </button>
               <button
                 onClick={() => setActiveRightTab('notifications')}
-                className={`flex-1 py-2.5 px-2 text-center text-sm font-medium border-b-2 transition-colors
+                className={`flex-1 py-2.5 px-1 text-center text-xs font-medium border-b-2 transition-colors
                   ${activeRightTab === 'notifications' 
                     ? 'border-blue-600 text-blue-700' 
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
               >
-                 <BellIcon className="inline-block mr-1.5 mb-0.5" />
-                Notificaciones
+                 <BellIcon className="inline-block mr-1 mb-0.5" />
+                <span className="hidden sm:inline">Notificaciones</span>
+                <span className="sm:hidden">Notif.</span>
+              </button>              <button
+                onClick={() => setActiveRightTab('deleted')}
+                className={`flex-1 py-2.5 px-1 text-center text-xs font-medium border-b-2 transition-colors relative
+                  ${activeRightTab === 'deleted' 
+                    ? 'border-red-600 text-red-700' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                <TrashIcon className="inline-block mr-1 mb-0.5" />
+                <span className="hidden sm:inline">Eliminados</span>
+                <span className="sm:hidden">Elim.</span>
+                {deletedProjectsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-xs font-semibold rounded-full flex items-center justify-center">
+                    {deletedProjectsCount}
+                  </span>
+                )}
               </button>
             </nav>
           </div>
@@ -342,6 +690,7 @@ export default function Dashboard() {
           <div className="overflow-y-auto h-[calc(100vh-var(--header-height,60px))]">
             {activeRightTab === 'invitations' && <MyInvitations />}
             {activeRightTab === 'notifications' && <NotificationsView />}
+            {activeRightTab === 'deleted' && <DeletedProjectsView onRefresh={handleRefreshProjects} />}
           </div>
         </aside>
       </div>

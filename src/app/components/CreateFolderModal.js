@@ -1,4 +1,4 @@
-// components/CreateFolderModal.js
+
 'use client';
 import { useState } from 'react';
 import axios from 'axios';
@@ -9,6 +9,8 @@ export default function CreateFolderModal({ isOpen, onClose, projectId, parentFo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();

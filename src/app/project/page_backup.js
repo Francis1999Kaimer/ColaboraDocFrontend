@@ -16,8 +16,6 @@ import InviteUserModal from '../components/InviteUserModal';
 import ChangeRoleModal from '../components/ChangeRoleModal';
 import DeletedUsersView from '../components/DeletedUsersView';
 import DeleteFolderModal from '../components/DeleteFolderModal';
-import RecyclingBinView from '../components/RecyclingBinView';
-import VersionActionButtons from '../components/VersionActionButtons';
 
 const FolderIcon = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props} className={`inline-block h-5 w-5 ${props.className || ''}`}>
@@ -279,85 +277,26 @@ function EnhancedDocumentationView({ projectId }) {
   };
 
   const handleDeleteFolder = (folderId) => {
-
     const folder = findFolderById(deliverablesTree, folderId);
-
-  
-
     if (folder) {
       setFolderToDelete(folder);
       setIsDeleteFolderModalOpen(true);
     }
   };
+
   const handleFolderDeleted = (deletedFolder) => {
     fetchProjectHierarchy();
     alert(`Carpeta "${deletedFolder.name}" movida a la papelera con éxito!`);
   };
 
-  const handleDeleteDocument = async (documentId) => {
-    const confirmMessage = `¿Estás seguro de que quieres eliminar este documento?\n\nEl documento será movido a la papelera y podrá ser restaurado desde allí.`;
-    
-    if (!window.confirm(confirmMessage)) return;
-    
-    try {
-      await axios.delete(
-        `${apiUrl}/api/documents/delete/${documentId}`,
-        { withCredentials: true }
-      );
-      
-      
-      fetchProjectHierarchy();
-      alert("✅ Documento movido a la papelera exitosamente.");
-      
-    } catch (err) {
-      console.error("Error deleting document:", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error al eliminar el documento.";
-      alert(`❌ Error: ${errorMessage}`);
-    }
-  };
-
-  const handleDeleteVersion = async (versionId) => {
-    const confirmMessage = `¿Estás seguro de que quieres eliminar esta versión?\n\nLa versión será movida a la papelera y podrá ser restaurada desde allí.`;
-    
-    if (!window.confirm(confirmMessage)) return;
-    
-    try {
-      await axios.delete(
-        `${apiUrl}/api/delete/versions/${versionId}`,
-        { withCredentials: true }
-      );
-      
-      
-      const documentId = Object.keys(loadedVersions).find(docId => 
-        loadedVersions[docId].some(version => version.idversion === versionId)
-      );
-      
-      if (documentId && expandedDocumentVersions[documentId]) {
-        fetchVersionsForDocument(documentId);
-      }
-      
-      alert("✅ Versión movida a la papelera exitosamente.");
-      
-    } catch (err) {
-      console.error("Error deleting version:", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error al eliminar la versión.";
-      alert(`❌ Error: ${errorMessage}`);
-    }
-  };
-
   
   const findFolderById = (folders, targetId) => {
-
-    console.log(targetId);
-    console.log(folders);
-
-
     for (const folder of folders) {
       if (folder.id === targetId) {
         return folder;
       }
-      if (folder.children && folder.children.length > 0) {
-        const found = findFolderById(folder.children, targetId);
+      if (folder.childFolders && folder.childFolders.length > 0) {
+        const found = findFolderById(folder.childFolders, targetId);
         if (found) return found;
       }
     }
@@ -421,7 +360,7 @@ function EnhancedDocumentationView({ projectId }) {
             > <DocumentIcon className="h-4 w-4" /> </button>
             <button
               title="Eliminar Carpeta"
-              onClick={(e) => { e.stopPropagation(); handleDeleteFolder(item.id);}}
+              onClick={(e) => { e.stopPropagation(); handleDeleteFolder(item.id); }}
               className="p-1 text-red-500 hover:bg-red-100 rounded"
             > <TrashIcon className="h-4 w-4" /> </button>
           </div>
@@ -516,6 +455,9 @@ function EnhancedDocumentationView({ projectId }) {
                          <td className="px-4 py-3 whitespace-nowrap text-gray-700">{doc.ultRevision}</td>
                          <td className="px-4 py-3 whitespace-nowrap">
                            <div className="flex items-center space-x-1">
+                             <button title="Ver Detalles" className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-full"><EyeIcon /></button>
+                             <button title="Descargar" className="p-1.5 text-green-600 hover:bg-green-100 rounded-full"><DocumentArrowDownIcon /></button>
+                             <button title="Historial de Versiones" className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-full"><ClockIcon /></button>
                              <button 
                                title="Subir Nueva Versión" 
                                onClick={() => {setDocumentForVersionModal(doc.id); setIsUploadVersionModalOpen(true);}}
@@ -524,13 +466,8 @@ function EnhancedDocumentationView({ projectId }) {
                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.338 2.166c1.552.322 2.81 1.526 2.81 3.111A2.625 2.625 0 0 1 18.75 19.5H6.75Z" />
                                </svg>
-                             </button>                             <button 
-                               title="Eliminar Documento" 
-                               onClick={() => handleDeleteDocument(doc.id)}
-                               className="p-1.5 text-red-600 hover:bg-red-100 rounded-full"
-                             >
-                               <TrashIcon />
                              </button>
+                             <button title="Más opciones" className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full"><EllipsisVerticalIcon /></button>
                            </div>
                          </td>
                        </tr>
@@ -544,26 +481,23 @@ function EnhancedDocumentationView({ projectId }) {
                                {!versionsLoading[doc.id] && !versionsError[doc.id] && loadedVersions[doc.id] && loadedVersions[doc.id].length > 0 && (
                                  <div>
                                    <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Versiones:</h4>
-                                   <ul className="space-y-1.5 text-xs">                                     {loadedVersions[doc.id].map(version => (                                       <li key={version.idversion} className="p-1.5 bg-white border border-gray-200 rounded-md shadow-sm">
+                                   <ul className="space-y-1.5 text-xs">
+                                     {loadedVersions[doc.id].map(version => (
+                                       <li key={version.idversion} className="p-1.5 bg-white border border-gray-200 rounded-md shadow-sm">
                                          <div className="flex justify-between items-center">
-                                             <div className="flex-grow">
+                                             <div>
                                                  <span className="font-medium text-gray-800">V{version.versionNumber}</span> - 
                                                  <span className="font-mono text-blue-700 ml-1">{version.dropboxFileId}</span>
-                                                 {version.comments && <p className="italic text-gray-600 mt-0.5 text-[11px]">"{version.comments}"</p>}
-                                                 <p className="text-gray-500 text-[11px]">
-                                                     Subido por: {version.uploadedBy?.names || 'N/A'} - {version.uploadedAt ? new Date(version.uploadedAt).toLocaleString() : 'N/A'}
-                                                 </p>
                                              </div>
-                                             <div className="flex items-center space-x-2 ml-4">
-                                               <VersionActionButtons
-                                                 version={version}
-                                                 documentName={doc.name}
-                                                 onDelete={() => handleDeleteVersion(version.idversion)}
-                                                 showDeleteButton={true}
-                                                 size="sm"
-                                               />
-                                             </div>
+                                             <span className="text-gray-400 text-[10px]">
+                                                 {version.uploadedAt ? new Date(version.uploadedAt).toLocaleString() : 'N/A'}
+                                             </span>
                                          </div>
+                                         {version.comments && <p className="italic text-gray-600 mt-0.5 text-[11px] pl-2">"{version.comments}"</p>}
+                                         <p className="text-gray-500 text-[11px] pl-2">
+                                             Subido por: {version.uploadedBy?.names || 'N/A'}
+                                         </p>
+                                      
                                        </li>
                                      ))}
                                    </ul>
@@ -904,8 +838,6 @@ function MembersView({ projectId }) {
               + Invitar Usuario
             </button>
           )}
-
-          
           
           {canManageRoles && (
             <button
@@ -1048,7 +980,8 @@ function ProjectDetailContent() {
                 {projectDetails.name}
             </h1>
         </div>
-          <div className="mb-6 border-b border-gray-300">
+        
+        <div className="mb-6 border-b border-gray-300">
           <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
             <button
               onClick={() => setActiveTab('documentation')}
@@ -1058,25 +991,12 @@ function ProjectDetailContent() {
               onClick={() => setActiveTab('members')}
               className={`py-3 px-1 border-b-2 font-semibold text-sm whitespace-nowrap ${activeTab === 'members' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'}`}
             > Integrantes del Proyecto </button>
-            <button
-              onClick={() => setActiveTab('recycle')}
-              className={`py-3 px-1 border-b-2 font-semibold text-sm whitespace-nowrap flex items-center ${activeTab === 'recycle' ? 'border-orange-600 text-orange-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200'}`}
-            >
-              <TrashIcon className="mr-1 h-4 w-4" />
-              Papelera
-            </button>
           </nav>
-        </div>        <div>
+        </div>
+
+        <div>
           {activeTab === 'documentation' && projectDetails.id && <EnhancedDocumentationView projectId={projectDetails.id} />}
-          {activeTab === 'members' && projectDetails.id && <MembersView projectId={projectDetails.id} />}          {activeTab === 'recycle' && projectDetails.id && (
-            <RecyclingBinView 
-              projectId={projectDetails.id} 
-              onItemRestored={() => {
-                
-                console.log('Item restored - may need to refresh documentation view');
-              }}
-            />
-          )}
+          {activeTab === 'members' && projectDetails.id && <MembersView projectId={projectDetails.id} />}
         </div>
       </div>
     </div>
