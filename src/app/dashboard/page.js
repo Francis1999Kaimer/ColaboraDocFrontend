@@ -1,13 +1,18 @@
-
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/authcontext';
-import MyInvitations from '../components/MyInvitations'; 
+import MyInvitations from '../components/MyInvitations';
 import NotificationsView from '../components/NotificationsView';
 import axios from 'axios';
 import Link from 'next/link';
 
+
+const PencilIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-5 w-5 ${props.className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+  </svg>
+);
 
 
 const Loader = ({ text = "Cargando..." }) => (
@@ -38,13 +43,13 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
     setSuccessMessage('');
     setIsSubmitting(true);
     try {
-      await onSubmit({ name, description }); 
+      await onSubmit({ name, description });
       setName('');
       setDescription('');
       setSuccessMessage('¡Proyecto creado exitosamente!');
       setTimeout(() => {
         onClose();
-        setSuccessMessage(''); 
+        setSuccessMessage('');
       }, 2000);
     } catch (err) {
       setError(err.message || "Error al crear el proyecto.");
@@ -107,7 +112,7 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !!successMessage} 
+              disabled={isSubmitting || !!successMessage}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
               {isSubmitting ? "Creando..." : "Crear Proyecto"}
@@ -120,12 +125,118 @@ const CreateProjectModal = ({ isOpen, onClose, onSubmit }) => {
 };
 
 
-const ProjectCard = ({ project, onDelete }) => {
+const EditProjectModal = ({ project, isOpen, onClose, onSubmit }) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    if (project) {
+      setName(project.name || '');
+      setDescription(project.description || '');
+    }
+  }, [project]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError("El nombre del proyecto es obligatorio.");
+      setSuccessMessage('');
+      return;
+    }
+    setError('');
+    setSuccessMessage('');
+    setIsSubmitting(true);
+    try {
+      await onSubmit(project.idproject, { name, description });
+      setSuccessMessage('¡Proyecto actualizado exitosamente!');
+      setTimeout(() => {
+        onClose();
+        setSuccessMessage('');
+      }, 2000);
+    } catch (err) {
+      setError(err.message || "Error al actualizar el proyecto.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-2xl font-semibold text-gray-800">Editar Proyecto</h3>
+          <button onClick={() => { onClose(); setError(''); setSuccessMessage(''); }} className="text-gray-500 hover:text-gray-700">
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+             </svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="editProjectName" className="block text-sm font-medium text-gray-700 mb-1">
+              Nombre del Proyecto <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="editProjectName"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="mb-6">
+            <label htmlFor="editProjectDescription" className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción
+            </label>
+            <textarea
+              id="editProjectDescription"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              disabled={isSubmitting}
+            ></textarea>
+          </div>
+          {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+          {successMessage && <p className="text-green-500 text-sm mb-3">{successMessage}</p>}
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => { onClose(); setError(''); setSuccessMessage(''); }}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !!successMessage}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {isSubmitting ? "Guardando..." : "Guardar Cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+
+
+const ProjectCard = ({ project, onDelete, onEdit }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async (e) => {
-    e.preventDefault(); 
-    e.stopPropagation(); 
+    e.preventDefault();
+    e.stopPropagation();
     
     if (!confirm(`¿Estás seguro de que quieres eliminar el proyecto "${project.name}"? Esta acción no se puede deshacer.`)) {
       return;
@@ -142,36 +253,53 @@ const ProjectCard = ({ project, onDelete }) => {
     }
   };
 
+  const handleEdit = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit(project);
+  };
+
   return (
     <div className="relative bg-gray-50 p-4 rounded-lg shadow hover:shadow-md transition-shadow">
-      <Link 
-        href={`/project?projectId=${project.idproject}&projectName=${encodeURIComponent(project.name)}`} 
+      <Link
+         href={`/project?projectId=${project.idproject}`} 
         passHref
       >
-        <div className="block cursor-pointer pr-10">
+        <div className="block cursor-pointer pr-24"> 
           <h3 className="text-xl font-semibold text-blue-700 mb-2">{project.name}</h3>
           <p className="text-gray-600 text-sm">{"Descripción: " + project.description || "Sin descripción."}</p>
           <p className="text-gray-600 text-sm">{"ID:          " + project.idproject}</p>
         </div>
       </Link>
       
-      <button
-        onClick={handleDelete}
-        disabled={isDeleting}
-        className="absolute top-4 right-4 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Eliminar proyecto"
-      >
-        {isDeleting ? (
-          <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        )}
-      </button>
+      <div className="absolute top-4 right-4 flex space-x-2">
+        <button
+          onClick={handleEdit}
+          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
+          title="Editar proyecto"
+        >
+          <PencilIcon />
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Eliminar proyecto"
+        >
+          {isDeleting ? (
+            <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          )}
+        </button>
+      </div>
     </div>
   );
 };
+
+
 
 const DeletedProjectCard = ({ project, onRestore }) => {
   const [isRestoring, setIsRestoring] = useState(false);
@@ -266,7 +394,7 @@ const DatabaseIcon = (props) => (
 
 const BackupButton = () => {
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   const handleCreateBackup = async () => {
     if (isCreatingBackup) return;
@@ -326,7 +454,7 @@ const DeletedProjectsView = ({ onRefresh }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   const fetchDeletedProjects = useCallback(async () => {
     setLoading(true);
@@ -460,6 +588,9 @@ export default function Dashboard() {
   const { user, loading: authLoading, logout } = useAuth();
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState(null);
 
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
@@ -467,10 +598,9 @@ export default function Dashboard() {
 
   const [searchTerm, setSearchTerm] = useState('');
 
-  
   const [deletedProjectsCount, setDeletedProjectsCount] = useState(0);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
   const [activeRightTab, setActiveRightTab] = useState('invitations');
 
   useEffect(() => {
@@ -481,9 +611,9 @@ export default function Dashboard() {
 
   const fetchProjects = useCallback(async () => {
     if (!user || authLoading) {
-      setProjectsLoading(false); 
+      setProjectsLoading(false);
       return;
-    } 
+    }
     setProjectsLoading(true);
     setProjectsError('');
     try {
@@ -503,7 +633,6 @@ export default function Dashboard() {
     }
   }, [user, authLoading, apiUrl]);
 
-  
   const fetchDeletedProjectsCount = useCallback(async () => {
     if (!user || authLoading) return;
     
@@ -513,7 +642,6 @@ export default function Dashboard() {
         setDeletedProjectsCount(response.data.length);
       }
     } catch (err) {
-      
       setDeletedProjectsCount(0);
     }
   }, [user, authLoading, apiUrl]);
@@ -522,42 +650,68 @@ export default function Dashboard() {
     fetchDeletedProjectsCount();
   }, [fetchDeletedProjectsCount]);
 
-  
   const handleRefreshProjects = useCallback(() => {
     fetchProjects();
-    fetchDeletedProjectsCount(); 
+    fetchDeletedProjectsCount();
   }, [fetchProjects, fetchDeletedProjectsCount]);
 
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]); 
-    const handleCreateProject = async (projectData) => {
+  }, [fetchProjects]);
+
+  const handleCreateProject = async (projectData) => {
     try {
       await axios.post(`${apiUrl}/api/projects/create`, projectData, { withCredentials: true });
-      await fetchProjects(); 
+      await fetchProjects();
     } catch (err) {
       console.error('Dashboard: Error creating project:', err.response?.data || err.message);
-      throw new Error(err.response?.data?.message || err.response?.data?.error || "Error al crear el proyecto."); 
+      throw new Error(err.response?.data?.message || err.response?.data?.error || "Error al crear el proyecto.");
     }
   };
+
+  
+  const handleUpdateProject = async (projectId, projectData) => {
+    try {
+      await axios.put(`${apiUrl}/api/projects/${projectId}`, projectData, { withCredentials: true });
+      await fetchProjects();
+    } catch (err) {
+      console.error('Dashboard: Error updating project:', err.response?.data || err.message);
+      let errorMessage = "Error al actualizar el proyecto.";
+      if (err.response?.status === 403) {
+        errorMessage = "No tienes permisos para editar este proyecto.";
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      throw new Error(errorMessage);
+    }
+  };
+
   const handleDeleteProject = async (projectId) => {
     try {
       await axios.delete(`${apiUrl}/api/projects/delete/${projectId}`, { withCredentials: true });
-      await fetchProjects(); 
-      await fetchDeletedProjectsCount(); 
+      await fetchProjects();
+      await fetchDeletedProjectsCount();
     } catch (err) {
       console.error('Dashboard: Error deleting project:', err.response?.data || err.message);
       throw new Error(err.response?.data?.message || err.response?.data?.error || "Error al eliminar el proyecto.");
     }
   };
 
+  
+  const handleOpenEditModal = (project) => {
+    setProjectToEdit(project);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setProjectToEdit(null);
+  };
 
   const filteredProjects = projects.filter(project =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-
-
 
   if (authLoading || (!user && !authLoading && typeof window !== 'undefined' && !window.location.pathname.includes('/login'))) {
     return <Loader text="Verificando sesión..." />;
@@ -572,6 +726,13 @@ export default function Dashboard() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateProject}
+      />
+      
+      <EditProjectModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        onSubmit={handleUpdateProject}
+        project={projectToEdit}
       />
 
       <div className="flex flex-col md:flex-row max-w-full mx-auto">
@@ -589,7 +750,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-              <div className="bg-white shadow-md rounded-lg p-6">
+            <div className="bg-white shadow-md rounded-lg p-6">
               <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-800">Mis Proyectos</h2>
                 <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
@@ -599,11 +760,10 @@ export default function Dashboard() {
                   >
                     + Crear Nuevo Proyecto
                   </button>
-                  <BackupButton />
+                  {user?.names === 'Admin' && <BackupButton />}
                 </div>
               </div>
 
-    
               <div className="mb-6">
                 <input
                   type="search"
@@ -613,8 +773,6 @@ export default function Dashboard() {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-       
-
 
               {projectsLoading && <Loader text="Cargando proyectos..." />}
               
@@ -634,17 +792,24 @@ export default function Dashboard() {
                   </p>
                   {!searchTerm && <p className="text-gray-500 text-sm">¡Crea uno para empezar!</p>}
                 </div>
-              )}              {!projectsLoading && !projectsError && filteredProjects.length > 0 && (
-           
-                <div className="grid grid-cols-1 gap-6"> 
-                  {filteredProjects.map((project) => ( 
-                    <ProjectCard key={project.idproject} project={project} onDelete={handleDeleteProject} /> 
+              )}
+              {!projectsLoading && !projectsError && filteredProjects.length > 0 && (
+                <div className="grid grid-cols-1 gap-6">
+                  
+                  {filteredProjects.map((project) => (
+                    <ProjectCard
+                      key={project.idproject}
+                      project={project}
+                      onDelete={handleDeleteProject}
+                      onEdit={handleOpenEditModal}
+                    />
                   ))}
                 </div>
               )}
             </div>
           </div>
-        </main>        <aside className="w-full md:w-[30%] lg:w-[25%] bg-white border-l border-gray-200 md:min-h-screen md:sticky md:top-0">
+        </main>
+        <aside className="w-full md:w-[30%] lg:w-[25%] bg-white border-l border-gray-200 md:min-h-screen md:sticky md:top-0">
           <div className="p-1 sticky top-0 bg-white z-10 border-b border-gray-200">
             <nav className="flex justify-around">
               <button
@@ -668,7 +833,8 @@ export default function Dashboard() {
                  <BellIcon className="inline-block mr-1 mb-0.5" />
                 <span className="hidden sm:inline">Notificaciones</span>
                 <span className="sm:hidden">Notif.</span>
-              </button>              <button
+              </button>
+              <button
                 onClick={() => setActiveRightTab('deleted')}
                 className={`flex-1 py-2.5 px-1 text-center text-xs font-medium border-b-2 transition-colors relative
                   ${activeRightTab === 'deleted' 
@@ -688,7 +854,7 @@ export default function Dashboard() {
           </div>
           
           <div className="overflow-y-auto h-[calc(100vh-var(--header-height,60px))]">
-            {activeRightTab === 'invitations' && <MyInvitations />}
+            {activeRightTab === 'invitations' && <MyInvitations onActionSuccess={handleRefreshProjects} />}
             {activeRightTab === 'notifications' && <NotificationsView />}
             {activeRightTab === 'deleted' && <DeletedProjectsView onRefresh={handleRefreshProjects} />}
           </div>

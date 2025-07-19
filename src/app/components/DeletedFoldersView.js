@@ -38,7 +38,7 @@ export default function DeletedFoldersView({ projectId, onFolderRestored }) {
   const [permanentlyDeletingFolders, setPermanentlyDeletingFolders] = useState(new Set());
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [selectedFolderForRestore, setSelectedFolderForRestore] = useState(null);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   const fetchDeletedFolders = useCallback(async () => {
     if (!projectId) return;

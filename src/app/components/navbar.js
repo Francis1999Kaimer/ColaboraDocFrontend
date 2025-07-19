@@ -31,7 +31,12 @@ export default function Navbar() {
 
   if (loading) {
     return (
-      <nav className="flex items-center justify-between px-6 py-4 shadow-md bg-gray-100 text-black">
+      <nav 
+        className="flex items-center justify-between px-6 py-4 shadow-md bg-gray-100 text-black relative"
+        style={{ 
+          zIndex: 50 // Z-index alto para estar sobre cualquier contenido
+        }}
+      >
         <Link href="/" className="flex items-center space-x-2">
           <img src="/icons/casco.png" alt="Logo" className="h-8 w-8" />
           <span className="text-xl font-semibold">ColaboraDoc</span>
@@ -43,7 +48,12 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="flex items-center justify-between px-6 py-4 shadow-md bg-gray-100 text-black">
+      <nav 
+        className="flex items-center justify-between px-6 py-4 shadow-md bg-gray-100 text-black relative"
+        style={{ 
+          zIndex: 50 // Z-index alto para estar sobre cualquier contenido
+        }}
+      >
         <Link href="/" className="flex items-center space-x-2">
           <img src="/icons/casco.png" alt="Logo" className="h-8 w-8" />
           <span className="text-xl font-semibold">ColaboraDoc</span>

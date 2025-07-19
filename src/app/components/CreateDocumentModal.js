@@ -3,12 +3,15 @@
 import { useState } from 'react';
 import axios from 'axios';
 
-export default function CreateDocumentModal({ isOpen, onClose, folderId, onDocumentCreated }) {
+export default function CreateDocumentModal({ isOpen, onClose, folderId, onDocumentCreated,  projectMembers = [] }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [codigo, setCodigo] = useState(''); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const [assignedToUserId, setAssignedToUserId] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const apiUrl = 'https://localhost:8080';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,11 +26,17 @@ export default function CreateDocumentModal({ isOpen, onClose, folderId, onDocum
     setError('');
     setIsSubmitting(true);
     try {
-      const payload = { name, description, folderId };
+      const payload = { 
+        name, 
+        description, 
+        codigo, 
+        folderId,
+        assignedToUserId: assignedToUserId ? parseInt(assignedToUserId, 10) : null,
+        dueDate: dueDate || null
+      }; 
       const response = await axios.post(`${apiUrl}/api/documents`, payload, { withCredentials: true });
       onDocumentCreated(response.data);
-      setName('');
-      setDescription('');
+      setName(''); setDescription(''); setCodigo(''); setAssignedToUserId(''); setDueDate('');
       onClose();
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.error || "Error al crear el documento.");
@@ -53,6 +62,19 @@ export default function CreateDocumentModal({ isOpen, onClose, folderId, onDocum
               className="w-full px-3 py-2 border border-gray-300 rounded-md" required disabled={isSubmitting}
             />
           </div>
+
+          <div className="mb-4">
+            <label htmlFor="docCodigo" className="block text-sm font-medium text-gray-700">Código</label>
+            <input 
+                type="text" 
+                id="docCodigo" 
+                value={codigo} 
+                onChange={(e) => setCodigo(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                maxLength="50"
+            />
+        </div>
+
           <div className="mb-6">
             <label htmlFor="docDescription" className="block text-sm font-medium text-gray-700 mb-1">
               Descripción
@@ -62,6 +84,37 @@ export default function CreateDocumentModal({ isOpen, onClose, folderId, onDocum
               rows="3" className="w-full px-3 py-2 border border-gray-300 rounded-md" disabled={isSubmitting}
             ></textarea>
           </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700">Encargado</label>
+              <select
+                id="assignedTo"
+                value={assignedToUserId}
+                onChange={(e) => setAssignedToUserId(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+              >
+                <option value="">-- Sin asignar --</option>
+                {projectMembers.map(member => (
+                  <option key={member.user.iduser} value={member.user.iduser}>
+                    {member.user.names} {member.user.lastnames}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700">Fecha Límite</label>
+              <input
+                type="date"
+                id="dueDate"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+              />
+            </div>
+          </div>
+
+
           <p className="text-xs text-gray-500 mb-2">Se creará en la carpeta seleccionada (ID: {folderId})</p>
           {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
           <div className="flex justify-end space-x-3">

@@ -158,7 +158,7 @@ export default function NotificationsView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all'); 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';  
+  const apiUrl = 'https://localhost:8080';  
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError('');

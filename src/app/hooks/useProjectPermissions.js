@@ -5,7 +5,7 @@ const useProjectPermissions = (projectId) => {
     const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+    const apiUrl = 'https://localhost:8080';
 
     const fetchUserRole = useCallback(async () => {
         if (!projectId) {

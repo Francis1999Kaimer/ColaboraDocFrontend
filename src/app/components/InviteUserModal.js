@@ -11,7 +11,7 @@ export default function InviteUserModal({ isOpen, onClose, projectId, onUserInvi
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   
   const { canInviteUsers } = useProjectPermissions(projectId);

@@ -28,4 +28,16 @@ body {
 html,
 body {
   height: 100%;
+  overflow-x: hidden; /* Prevent horizontal scrollbar */
+}
+
+/* Specific styles for annotation and view pages */
+html:has([data-route="/annotate"]),
+html:has([data-route="/view"]) {
+  overflow: hidden;
+}
+
+body:has([data-route="/annotate"]),
+body:has([data-route="/view"]) {
+  overflow: hidden;
 }

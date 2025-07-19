@@ -23,11 +23,9 @@ export default function Login() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [feedbackType, setFeedbackType] = useState(''); 
 
- 
   const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
-
     if (!authLoading && user) {
       router.push('/dashboard');
     }
@@ -39,7 +37,7 @@ export default function Login() {
     setMensaje('');
     setIsSubmitting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+      const apiUrl = 'https://localhost:8080';
       const res = await axios.post(`${apiUrl}/api/auth/login`, {
         email,
         password,

@@ -31,7 +31,7 @@ export default function DeleteFolderModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   const handleDelete = async () => {
     if (!folder) return;

@@ -43,7 +43,7 @@ export default function Register() {
     setIsSubmitting(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+      const apiUrl = 'https://localhost:8080';
    
       await axios.post(`${apiUrl}/api/auth/register`, {
         email,

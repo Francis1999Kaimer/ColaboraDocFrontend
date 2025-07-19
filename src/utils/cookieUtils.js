@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react';
 
-/**
- * Utilidades para manejo seguro de cookies
- * Las cookies HttpOnly se envían automáticamente, no necesitan manipulación manual
- */
+export const getJWTToken = async () => {
+  try {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      if (userData.token) {
+        return userData.token;
+      }
+    }
 
-/**
- * Hace una petición autenticada usando las cookies automáticamente
- * @param {string} url - URL del endpoint
- * @param {object} options - Opciones adicionales para fetch
- * @returns {Promise<Response>}
- */
+    const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.token;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error obteniendo token JWT:', error);
+    return null;
+  }
+};
+
 export const authenticatedFetch = async (url, options = {}) => {
   const defaultOptions = {
     credentials: 'include', 
@@ -24,10 +36,6 @@ export const authenticatedFetch = async (url, options = {}) => {
   return fetch(url, defaultOptions);
 };
 
-/**
- * Verifica si el usuario está autenticado haciendo una petición al endpoint de perfil
- * @returns {Promise<object|null>} - Información del usuario o null si no está autenticado
- */
 export const getCurrentUser = async () => {
   try {
     const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`);
@@ -43,10 +51,6 @@ export const getCurrentUser = async () => {
   }
 };
 
-/**
- * Hook para verificar autenticación del lado del cliente
- * @returns {object} - Estado de autenticación {user, loading, error}
- */
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);

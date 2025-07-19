@@ -39,7 +39,7 @@ export default function DeletedVersionsView({ projectId, documentId, onVersionRe
   const [permanentlyDeletingVersions, setPermanentlyDeletingVersions] = useState(new Set());
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [versionToRestore, setVersionToRestore] = useState(null);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
   const fetchDeletedVersions = useCallback(async () => {
     
     if (documentId) {

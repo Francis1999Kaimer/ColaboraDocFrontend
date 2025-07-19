@@ -11,14 +11,14 @@ const SidebarLoader = ({ text = "Cargando..." }) => (
   </div>
 );
 
-export default function MyInvitations() {
+export default function MyInvitations({ onActionSuccess }) {
   const { user, loading: authLoading } = useAuth();
   const [invitations, setInvitations] = useState([]);
   const [loadingInvitations, setLoadingInvitations] = useState(true);
   const [error, setError] = useState('');
   const [actionInProgress, setActionInProgress] = useState(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   const fetchPendingInvitations = useCallback(async () => {
     if (!user || authLoading) {
@@ -48,7 +48,17 @@ export default function MyInvitations() {
     setError('');
     try {
       await axios.post(`${apiUrl}/api/projects/invitations/${projectUserId}/respond`, { accept }, { withCredentials: true });
-      fetchPendingInvitations(); 
+          
+      
+
+      
+      
+      setInvitations(prev => prev.filter(inv => inv.id !== projectUserId));
+
+      
+      if (accept && onActionSuccess) {
+        onActionSuccess();
+      }
 
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || `Error al responder a la invitación.`);

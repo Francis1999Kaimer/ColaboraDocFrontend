@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, Suspense, useCallback,Fragment } from 'react';
+import { useState, useEffect, Suspense, useCallback, Fragment } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../context/authcontext';
 import useProjectPermissions from '../hooks/useProjectPermissions';
@@ -18,6 +17,18 @@ import DeletedUsersView from '../components/DeletedUsersView';
 import DeleteFolderModal from '../components/DeleteFolderModal';
 import RecyclingBinView from '../components/RecyclingBinView';
 import VersionActionButtons from '../components/VersionActionButtons';
+
+
+import EditFolderModal from '../components/EditFolderModal';
+import EditDocumentModal from '../components/EditDocumentModal';
+import EditVersionModal from '../components/EditVersionModal';
+
+
+const PencilIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-4 w-4 ${props.className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+  </svg>
+);
 
 const FolderIcon = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props} className={`inline-block h-5 w-5 ${props.className || ''}`}>
@@ -92,9 +103,8 @@ const ChevronDoubleUpIcon = (props) => (
 );
 
 
-
 const Loader = ({ text = "Cargando..." }) => (
-  <div className="flex items-center justify-center p-4 text-gray-900"> 
+  <div className="flex items-center justify-center p-4 text-gray-900">
     <div className="flex flex-col items-center">
       <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
       <p className="text-sm">{text}</p>
@@ -103,64 +113,71 @@ const Loader = ({ text = "Cargando..." }) => (
 );
 
 
-function EnhancedDocumentationView({ projectId }) {
+function EnhancedDocumentationView({ projectId, projectMembers }) {
+  const { user, loading: authLoading } = useAuth();
   const [deliverablesTree, setDeliverablesTree] = useState([]);
   const [selectedFolderContent, setSelectedFolderContent] = useState({ documents: [], childFolders: [] });
-  
+
   const [treeLoading, setTreeLoading] = useState(true);
   const [treeError, setTreeError] = useState('');
 
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState({});
   const [documentSearchTerm, setDocumentSearchTerm] = useState('');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+   const [folderSearchTerm, setFolderSearchTerm] = useState('');
+  const apiUrl = 'https://localhost:8080';
+
+  
+  
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [parentFolderForModal, setParentFolderForModal] = useState(null);
   const [isCreateDocumentModalOpen, setIsCreateDocumentModalOpen] = useState(false);
   const [folderForDocumentModal, setFolderForDocumentModal] = useState(null);
   const [isUploadVersionModalOpen, setIsUploadVersionModalOpen] = useState(false);
   const [documentForVersionModal, setDocumentForVersionModal] = useState(null);
+  
   const [isDeleteFolderModalOpen, setIsDeleteFolderModalOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState(null);
+  
+  const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
+  const [folderToEdit, setFolderToEdit] = useState(null);
+  const [isEditDocumentModalOpen, setIsEditDocumentModalOpen] = useState(false);
+  const [documentToEdit, setDocumentToEdit] = useState(null);
+  const [isEditVersionModalOpen, setIsEditVersionModalOpen] = useState(false);
+  const [versionToEdit, setVersionToEdit] = useState(null);
 
-  const [expandedDocumentVersions, setExpandedDocumentVersions] = useState({}); 
+  const [expandedDocumentVersions, setExpandedDocumentVersions] = useState({});
   const [loadedVersions, setLoadedVersions] = useState({});
-  const [versionsLoading, setVersionsLoading] = useState({}); 
-  const [versionsError, setVersionsError] = useState({});   
-
-
+  const [versionsLoading, setVersionsLoading] = useState({});
+  const [versionsError, setVersionsError] = useState({});
+  
 
   const toggleDocumentVersions = (documentId) => {
     const isCurrentlyOpen = !!expandedDocumentVersions[documentId];
     setExpandedDocumentVersions(prev => ({ ...prev, [documentId]: !isCurrentlyOpen }));
-
-    if (!isCurrentlyOpen && !loadedVersions[documentId]) { 
+    if (!isCurrentlyOpen && !loadedVersions[documentId]) {
       fetchVersionsForDocument(documentId);
     }
   };
 
   const fetchVersionsForDocument = async (documentId) => {
     setVersionsLoading(prev => ({ ...prev, [documentId]: true }));
-    setVersionsError(prev => ({ ...prev, [documentId]: '' })); 
+    setVersionsError(prev => ({ ...prev, [documentId]: '' }));
     try {
-      console.log(`Fetching versions for document ID: ${documentId} from ${apiUrl}/api/documents/${documentId}/versions`);
       const response = await axios.get(`${apiUrl}/api/documents/${documentId}/versions`, { withCredentials: true });
       if (Array.isArray(response.data)) {
         const sortedVersions = response.data.sort((a, b) => (b.versionNumber || 0) - (a.versionNumber || 0));
         setLoadedVersions(prev => ({ ...prev, [documentId]: sortedVersions }));
       } else {
-        console.error("Versions data is not an array for doc ID:", documentId, response.data);
-        setVersionsError(prev => ({ ...prev, [documentId]: "Formato de datos de versiones inesperado."}));
+        setVersionsError(prev => ({ ...prev, [documentId]: "Formato de datos de versiones inesperado." }));
       }
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.response?.data?.message || "Error al cargar versiones.";
-      setVersionsError(prev => ({ ...prev, [documentId]: errorMessage}));
-      console.error(`Error fetching versions for document ${documentId}:`, err);
+      setVersionsError(prev => ({ ...prev, [documentId]: errorMessage }));
     } finally {
       setVersionsLoading(prev => ({ ...prev, [documentId]: false }));
     }
   };
-
 
   const mapApiFolderToFrontendTree = useCallback((apiFolder) => {
     if (!apiFolder) return null;
@@ -172,10 +189,13 @@ function EnhancedDocumentationView({ projectId }) {
       children: apiFolder.childFolders ? apiFolder.childFolders.map(mapApiFolderToFrontendTree) : [],
       documents: apiFolder.documents ? apiFolder.documents.map(doc => ({
         id: doc.iddocument,
-        folderId: apiFolder.idfolder, 
-        codigoExt: doc.codigoExt || 'N/A',
-        name: doc.name, 
-        ultRevision: doc.ultRevision || 'N/A', 
+        folderId: apiFolder.idfolder,
+        codigo: doc.codigo || 'N/A', 
+        name: doc.name,
+        description: doc.description,
+        assignedTo: doc.assignedTo, 
+        dueDate: doc.dueDate,       
+        ultRevision: doc.ultRevision || 'N/A',
       })) : [],
     };
   }, []);
@@ -184,46 +204,32 @@ function EnhancedDocumentationView({ projectId }) {
     if (!projectId) return;
     setTreeLoading(true);
     setTreeError('');
-    setDeliverablesTree([]);
-
-
     try {
-      console.log(`Fetching project hierarchy for project ID: ${projectId} from ${apiUrl}/api/projects/${projectId}/folders`);
       const response = await axios.get(`${apiUrl}/api/projects/${projectId}/folders`, { withCredentials: true });
-      
       if (Array.isArray(response.data)) {
         const fetchedTree = response.data.map(mapApiFolderToFrontendTree);
         setDeliverablesTree(fetchedTree);
-
-        if (fetchedTree.length > 0 && !selectedFolderId) {
-   
-        } else if (fetchedTree.length === 0) {
-            setSelectedFolderId(null); 
-            setSelectedFolderContent({ documents: [], childFolders: [] });
-        } else if (selectedFolderId) {
-        
+        if (fetchedTree.length > 0 && selectedFolderId) {
             const currentSelected = findFolderRecursive(fetchedTree, selectedFolderId);
             if (currentSelected) {
                 setSelectedFolderContent({
                     documents: currentSelected.documents || [],
                     childFolders: currentSelected.children || []
                 });
-            } else { 
+            } else {
                 setSelectedFolderId(null);
                 setSelectedFolderContent({ documents: [], childFolders: [] });
             }
         }
       } else {
-        console.error("Project hierarchy data is not an array:", response.data);
         setTreeError("Formato de datos de jerarquía inesperado.");
       }
     } catch (err) {
       setTreeError(err.response?.data?.error || err.response?.data?.message || 'Error al cargar la estructura del proyecto.');
-      console.error("Error fetching project hierarchy:", err);
     } finally {
       setTreeLoading(false);
     }
-  }, [projectId, apiUrl, mapApiFolderToFrontendTree]);
+  }, [projectId, apiUrl, mapApiFolderToFrontendTree, selectedFolderId]);
 
   useEffect(() => {
     fetchProjectHierarchy();
@@ -231,24 +237,20 @@ function EnhancedDocumentationView({ projectId }) {
 
   const findFolderRecursive = useCallback((items, folderId) => {
     for (const item of items) {
-        if (item.id === folderId) return item;
-        if (item.children) {
-            const found = findFolderRecursive(item.children, folderId);
-            if (found) return found;
-        }
+      if (item.id === folderId) return item;
+      if (item.children) {
+        const found = findFolderRecursive(item.children, folderId);
+        if (found) return found;
+      }
     }
     return null;
   }, []);
-
 
   useEffect(() => {
     if (selectedFolderId && deliverablesTree.length > 0) {
       const folderNode = findFolderRecursive(deliverablesTree, selectedFolderId);
       if (folderNode) {
-        setSelectedFolderContent({
-          documents: folderNode.documents || [],
-          childFolders: folderNode.children || [] 
-        });
+        setSelectedFolderContent({ documents: folderNode.documents || [], childFolders: folderNode.children || [] });
       } else {
         setSelectedFolderContent({ documents: [], childFolders: [] });
       }
@@ -256,106 +258,86 @@ function EnhancedDocumentationView({ projectId }) {
       setSelectedFolderContent({ documents: [], childFolders: [] });
     }
   }, [selectedFolderId, deliverablesTree, findFolderRecursive]);
-
-
-  const handleFolderCreated = (newFolderDTO) => {
-    fetchProjectHierarchy();
-    alert("Carpeta creada con éxito!");
-  };
-
-  const handleDocumentCreated = (newDocumentDTO) => {
-    fetchProjectHierarchy();
-    alert("Documento creado con éxito!");
-  };
-    const handleVersionUploaded = (newVersionDTO) => { 
-    console.log("Frontend: Versión subida DTO:", newVersionDTO);
-   
-    if (expandedDocumentVersions[newVersionDTO.documentId]) {
-      fetchVersionsForDocument(newVersionDTO.documentId);
-    }
-
-    fetchProjectHierarchy(); 
-    alert("Nueva versión subida con éxito!");
-  };
-
-  const handleDeleteFolder = (folderId) => {
-
-    const folder = findFolderById(deliverablesTree, folderId);
+  
+  const handleVersionUploaded = () => {
+  
+  alert('Versión subida con éxito');
 
   
+  if (documentForVersionModal) {
+    
+    fetchVersionsForDocument(documentForVersionModal);
 
+    
+    setExpandedDocumentVersions(prev => ({ ...prev, [documentForVersionModal]: true }));
+  }
+
+  
+  setIsUploadVersionModalOpen(false);
+};
+
+
+  const handleItemCreated = (itemName) => {
+    fetchProjectHierarchy();
+    alert(`${itemName} creado con éxito!`);
+  };
+  
+  const handleItemUpdated = (itemName) => {
+    fetchProjectHierarchy();
+    if(itemName === "Versión") {
+        const docId = versionToEdit?.document?.iddocument;
+        if(docId) fetchVersionsForDocument(docId);
+    }
+    alert(`${itemName} actualizado con éxito!`);
+  };
+
+  const handleItemDeleted = (itemName) => {
+    fetchProjectHierarchy();
+    alert(`${itemName} movido a la papelera con éxito!`);
+  }
+
+  
+  const handleUpdateFolder = async (folderId, data) => {
+    await axios.put(`${apiUrl}/api/folders/${folderId}`, data, { withCredentials: true });
+    handleItemUpdated("Carpeta");
+  };
+
+  const handleUpdateDocument = async (documentId, data) => {
+    await axios.put(`${apiUrl}/api/documents/${documentId}`, data, { withCredentials: true });
+    handleItemUpdated("Documento");
+  };
+
+  const handleUpdateVersion = async (versionId, data) => {
+    await axios.put(`${apiUrl}/api/versions/${versionId}`, data, { withCredentials: true });
+    handleItemUpdated("Versión");
+  };
+
+
+  const handleDeleteFolder = (folderId) => {
+    const folder = findFolderById(deliverablesTree, folderId);
     if (folder) {
       setFolderToDelete(folder);
       setIsDeleteFolderModalOpen(true);
     }
   };
-  const handleFolderDeleted = (deletedFolder) => {
-    fetchProjectHierarchy();
-    alert(`Carpeta "${deletedFolder.name}" movida a la papelera con éxito!`);
-  };
 
   const handleDeleteDocument = async (documentId) => {
-    const confirmMessage = `¿Estás seguro de que quieres eliminar este documento?\n\nEl documento será movido a la papelera y podrá ser restaurado desde allí.`;
-    
-    if (!window.confirm(confirmMessage)) return;
-    
-    try {
-      await axios.delete(
-        `${apiUrl}/api/documents/delete/${documentId}`,
-        { withCredentials: true }
-      );
-      
-      
-      fetchProjectHierarchy();
-      alert("✅ Documento movido a la papelera exitosamente.");
-      
-    } catch (err) {
-      console.error("Error deleting document:", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error al eliminar el documento.";
-      alert(`❌ Error: ${errorMessage}`);
-    }
+    if (!window.confirm("¿Seguro que quieres eliminar este documento?")) return;
+    await axios.delete(`${apiUrl}/api/documents/delete/${documentId}`, { withCredentials: true });
+    handleItemDeleted("Documento");
   };
 
   const handleDeleteVersion = async (versionId) => {
-    const confirmMessage = `¿Estás seguro de que quieres eliminar esta versión?\n\nLa versión será movida a la papelera y podrá ser restaurada desde allí.`;
-    
-    if (!window.confirm(confirmMessage)) return;
-    
-    try {
-      await axios.delete(
-        `${apiUrl}/api/delete/versions/${versionId}`,
-        { withCredentials: true }
-      );
-      
-      
-      const documentId = Object.keys(loadedVersions).find(docId => 
-        loadedVersions[docId].some(version => version.idversion === versionId)
-      );
-      
-      if (documentId && expandedDocumentVersions[documentId]) {
-        fetchVersionsForDocument(documentId);
-      }
-      
-      alert("✅ Versión movida a la papelera exitosamente.");
-      
-    } catch (err) {
-      console.error("Error deleting version:", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || "Error al eliminar la versión.";
-      alert(`❌ Error: ${errorMessage}`);
-    }
+    if (!window.confirm("¿Seguro que quieres eliminar esta versión?")) return;
+    await axios.delete(`${apiUrl}/api/delete/versions/${versionId}`, { withCredentials: true });
+    const docId = Object.keys(loadedVersions).find(dId => loadedVersions[dId].some(v => v.idversion === versionId));
+    if (docId) fetchVersionsForDocument(docId);
+    alert("Versión movida a la papelera.");
   };
 
-  
   const findFolderById = (folders, targetId) => {
-
-    console.log(targetId);
-    console.log(folders);
-
-
     for (const folder of folders) {
-      if (folder.id === targetId) {
-        return folder;
-      }
+      if (folder.id === targetId) return folder;
       if (folder.children && folder.children.length > 0) {
         const found = findFolderById(folder.children, targetId);
         if (found) return found;
@@ -370,63 +352,49 @@ function EnhancedDocumentationView({ projectId }) {
 
   const handleFolderSelect = (folderId) => {
     setSelectedFolderId(folderId);
-    setDocumentSearchTerm(''); 
+    setDocumentSearchTerm('');
   };
-  
+
   const handleToggleAndSelect = (folderId) => {
     toggleExpand(folderId);
-    handleFolderSelect(folderId); 
+    handleFolderSelect(folderId);
   };
-
+  
   const filteredDocuments = selectedFolderContent.documents.filter(doc => {
-    const matchesSearch = documentSearchTerm === '' || 
-                          (doc.name && doc.name.toLowerCase().includes(documentSearchTerm.toLowerCase())) ||
-                          (doc.codigoExt && doc.codigoExt.toLowerCase().includes(documentSearchTerm.toLowerCase()));
-    return matchesSearch;
+    const searchTermLower = documentSearchTerm.toLowerCase();
+    return documentSearchTerm === '' || 
+           (doc.name && doc.name.toLowerCase().includes(searchTermLower)) ||
+           (doc.codigo && doc.codigo.toLowerCase().includes(searchTermLower)) ||
+           (doc.description && doc.description.toLowerCase().includes(searchTermLower)); 
   });
-
+  
+  
   const renderTreeItem = (item, level = 0) => {
-    const IconComponent = FolderIcon;
+    
     const isExpanded = !!expandedFolders[item.id];
     const hasSubItems = item.children && item.children.length > 0;
+   
 
     return (
-
       <div key={item.id} className="relative">
         <div className="flex items-center">
-       
           <button
             onClick={() => hasSubItems ? handleToggleAndSelect(item.id) : handleFolderSelect(item.id)}
-            style={{ paddingLeft: `${level * 1.25 + (hasSubItems ? 0 : 0)}rem` }}
+            style={{ paddingLeft: `${level * 1.25}rem` }}
             className={`flex-grow flex items-center text-left pl-2 pr-1 py-2 rounded-md text-sm font-medium transition-colors
               ${selectedFolderId === item.id ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'}`}
           >
-            {hasSubItems && (isExpanded ? <ChevronDownIcon className="mr-1.5 shrink-0 h-4 w-4" /> : <ChevronRightIcon className="mr-1.5 shrink-0 h-4 w-4" />)}
-            {!hasSubItems && <span className="inline-block mr-1.5 h-4 w-4 shrink-0"></span>}
-            <IconComponent className={`mr-1.5 shrink-0 h-5 w-5 ${selectedFolderId === item.id ? 'text-blue-600' : 'text-gray-400'}`} />
+            {hasSubItems ? (isExpanded ? <ChevronDownIcon className="mr-1.5 shrink-0" /> : <ChevronRightIcon className="mr-1.5 shrink-0" />) : <span className="inline-block w-4 mr-1.5 shrink-0"></span>}
+            <FolderIcon className={`mr-1.5 shrink-0 ${selectedFolderId === item.id ? 'text-blue-600' : 'text-gray-400'}`} />
             <span className="truncate flex-grow">{item.name}</span>
           </button>
-
-
-          <div className="ml-auto flex items-center space-x-0.5 pr-1"> 
-            <button
-              title="Crear Subcarpeta"
-              onClick={(e) => { e.stopPropagation(); setParentFolderForModal(item.id); setIsCreateFolderModalOpen(true); console.log(parentFolderForModal) }}
-              className="p-1 text-blue-500 hover:bg-blue-100 rounded"
-            > <FolderIcon className="h-4 w-4" /> </button>
-            <button
-              title="Crear Documento"
-              onClick={(e) => { e.stopPropagation(); setFolderForDocumentModal(item.id); setIsCreateDocumentModalOpen(true); }}
-              className="p-1 text-green-500 hover:bg-green-100 rounded" 
-            > <DocumentIcon className="h-4 w-4" /> </button>
-            <button
-              title="Eliminar Carpeta"
-              onClick={(e) => { e.stopPropagation(); handleDeleteFolder(item.id);}}
-              className="p-1 text-red-500 hover:bg-red-100 rounded"
-            > <TrashIcon className="h-4 w-4" /> </button>
+          <div className="ml-auto flex items-center space-x-0.5 pr-1">
+            <button title="Editar Carpeta" onClick={(e) => { e.stopPropagation(); setFolderToEdit(item); setIsEditFolderModalOpen(true); }} className="p-1 text-gray-500 hover:bg-gray-200 rounded"><PencilIcon /></button>
+            <button title="Crear Subcarpeta" onClick={(e) => { e.stopPropagation(); setParentFolderForModal(item.id); setIsCreateFolderModalOpen(true); }} className="p-1 text-blue-500 hover:bg-blue-100 rounded"><FolderIcon className="h-4 w-4" /></button>
+            <button title="Crear Documento" onClick={(e) => { e.stopPropagation(); setFolderForDocumentModal(item.id); setIsCreateDocumentModalOpen(true); }} className="p-1 text-green-500 hover:bg-green-100 rounded"><DocumentIcon className="h-4 w-4" /></button>
+            <button title="Eliminar Carpeta" onClick={(e) => { e.stopPropagation(); handleDeleteFolder(item.id); }} className="p-1 text-red-500 hover:bg-red-100 rounded"><TrashIcon /></button>
           </div>
         </div>
-     
         {hasSubItems && isExpanded && (
           <div className="mt-0.5">
             {item.children.map(subItem => renderTreeItem(subItem, level + 1))}
@@ -435,179 +403,184 @@ function EnhancedDocumentationView({ projectId }) {
       </div>
     );
   };
+
+  function filterFolders(tree, searchTerm) {
+  if (!searchTerm) return tree;
+  const term = searchTerm.toLowerCase();
+  return tree
+    .map(folder => {
+      
+      const matches = folder.name.toLowerCase().includes(term);
+      const filteredChildren = filterFolders(folder.children || [], searchTerm);
+      if (matches || filteredChildren.length > 0) {
+        return { ...folder, children: filteredChildren };
+      }
+      return null;
+    })
+    .filter(Boolean);
+  }
+  const filteredFoldersTree = filterFolders(deliverablesTree, folderSearchTerm);
   
+  if (authLoading) return <div className="w-full md:w-auto"><Loader text="Verificando sesión..." /></div>;
   if (treeLoading) return <div className="w-full md:w-auto"><Loader text="Cargando estructura..." /></div>;
   if (treeError) return <div className="w-full p-4 text-center text-red-600 bg-red-100 rounded-md">{treeError}</div>;
 
   return (
     <>
-      <CreateFolderModal
-        isOpen={isCreateFolderModalOpen} onClose={() => setIsCreateFolderModalOpen(false)}
-        projectId={!parentFolderForModal ? projectId : null} parentFolderId={parentFolderForModal}
-        onFolderCreated={handleFolderCreated}
-        
-      />
-      <CreateDocumentModal
-        isOpen={isCreateDocumentModalOpen} onClose={() => setIsCreateDocumentModalOpen(false)}
-        folderId={folderForDocumentModal} onDocumentCreated={handleDocumentCreated}
-      />      <UploadVersionModal
-        isOpen={isUploadVersionModalOpen} onClose={() => setIsUploadVersionModalOpen(false)}
-        documentId={documentForVersionModal} onVersionUploaded={handleVersionUploaded}
-      />
-      <DeleteFolderModal
-        isOpen={isDeleteFolderModalOpen} 
-        onClose={() => setIsDeleteFolderModalOpen(false)}
-        folder={folderToDelete}
-        onFolderDeleted={handleFolderDeleted}
-      />
+      <CreateFolderModal isOpen={isCreateFolderModalOpen} onClose={() => setIsCreateFolderModalOpen(false)} projectId={!parentFolderForModal ? projectId : null} parentFolderId={parentFolderForModal} onFolderCreated={() => handleItemCreated("Carpeta")} />
+      <CreateDocumentModal isOpen={isCreateDocumentModalOpen} onClose={() => setIsCreateDocumentModalOpen(false)} folderId={folderForDocumentModal} onDocumentCreated={() => handleItemCreated("Documento")} projectMembers={projectMembers} />
+      <UploadVersionModal isOpen={isUploadVersionModalOpen} onClose={() => setIsUploadVersionModalOpen(false)} documentId={documentForVersionModal} onVersionUploaded={handleVersionUploaded} />
+      <DeleteFolderModal isOpen={isDeleteFolderModalOpen} onClose={() => setIsDeleteFolderModalOpen(false)} folder={folderToDelete} onFolderDeleted={() => handleItemDeleted("Carpeta")} />
+
+      
+      <EditFolderModal isOpen={isEditFolderModalOpen} onClose={() => setIsEditFolderModalOpen(false)} folder={folderToEdit} onFolderUpdated={handleUpdateFolder} />
+      <EditDocumentModal isOpen={isEditDocumentModalOpen} onClose={() => setIsEditDocumentModalOpen(false)} document={documentToEdit} onDocumentUpdated={handleUpdateDocument} projectMembers={projectMembers} />
+      <EditVersionModal isOpen={isEditVersionModalOpen} onClose={() => setIsEditVersionModalOpen(false)} version={versionToEdit} onVersionUpdated={handleUpdateVersion} />
 
       <div className="flex justify-end mb-4">
-        <button
-          onClick={() => { setParentFolderForModal(null); setIsCreateFolderModalOpen(true); }}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 shadow-sm"
-        > + Nueva Carpeta Raíz </button>
+        <button onClick={() => { setParentFolderForModal(null); setIsCreateFolderModalOpen(true); }} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 shadow-sm">+ Nueva Carpeta Raíz</button>
       </div>
 
       <div className="flex flex-col md:flex-row gap-x-6 gap-y-4">
-        <div className="md:w-1/3 lg:w-1/4 bg-gray-50 p-3 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3 px-1">Carpetas del Proyecto</h3>
-          <nav className="space-y-0.5">
-            {deliverablesTree.length > 0 ? 
-                deliverablesTree.map(item => renderTreeItem(item)) :
-                ( !treeLoading && <p className="text-sm text-gray-500 px-2 py-4 text-center">No hay carpetas. ¡Crea la primera!</p> )
-            }
-          </nav>
-        </div>
+  <div className="md:w-1/3 lg:w-1/4 bg-gray-50 p-3 rounded-lg shadow-md">
+    <h3 className="text-lg font-semibold text-gray-800 mb-3 px-1">Carpetas del Proyecto</h3>
+      <div className="mb-2">
+    <input
+      type="search"
+      placeholder="Buscar carpeta..."
+      value={folderSearchTerm}
+      onChange={e => setFolderSearchTerm(e.target.value)}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+    />
+  </div>
+    
+    <div className="max-h-[400px] overflow-y-auto pr-1">
+    <nav className="space-y-0.5">
+  {filteredFoldersTree.length > 0
+    ? filteredFoldersTree.map(item => renderTreeItem(item))
+    : (!treeLoading && (
+        <p className="text-sm text-gray-500 px-2 py-4 text-center">
+          {folderSearchTerm ? 'No hay carpetas que coincidan.' : 'No hay carpetas. ¡Crea la primera!'}
+        </p>
+      ))
+  }
+</nav>
+    </div>
+  </div>
 
         <div className="md:w-2/3 lg:w-3/4 flex-grow">
           <div className="mb-4">
-            <input type="search" placeholder="Buscar documentos en la carpeta actual..." value={documentSearchTerm} onChange={(e) => setDocumentSearchTerm(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+            <input type="search" placeholder="Buscar documentos en la carpeta actual..." value={documentSearchTerm} onChange={(e) => setDocumentSearchTerm(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500" />
           </div>
-          
+
           {selectedFolderId ? (
             filteredDocuments.length > 0 ? (
               <div className="overflow-x-auto bg-white rounded-lg shadow-md">
+                 <div className="max-h-[400px] overflow-y-auto">
                 <table className="min-w-full text-sm divide-y divide-gray-200">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-2 py-3 w-10 sm:w-12"></th> 
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Código Ext.</th>
+                      <th className="px-2 py-3 w-10 sm:w-12"></th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Código</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Título</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">Ult. Rev.</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Encargado</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha Límite</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Opciones</th>
                     </tr>
                   </thead>
+                  
                   <tbody className="bg-white divide-y divide-gray-200">
-                   {filteredDocuments.map(doc => (
-                     <Fragment key={doc.id}>
-                       <tr className="hover:bg-gray-50 transition-colors">
-                         <td className="px-2 py-3 text-center">
-                           <button 
-                             onClick={() => toggleDocumentVersions(doc.id)} 
-                             className="p-1 text-gray-400 hover:text-blue-600 rounded-full focus:outline-none"
-                             title={expandedDocumentVersions[doc.id] ? "Ocultar versiones" : "Mostrar versiones"}
-                           >
-                             {expandedDocumentVersions[doc.id] ? <ChevronDoubleUpIcon className="h-4 w-4" /> : <ChevronDoubleDownIcon className="h-4 w-4" />}
-                           </button>
-                         </td>
-                         <td className="px-4 py-3 whitespace-nowrap text-gray-700">{doc.codigoExt}</td>
-                         <td className="px-4 py-3 text-gray-700 min-w-[200px]">{doc.name}</td> 
-                         <td className="px-4 py-3 whitespace-nowrap text-gray-700">{doc.ultRevision}</td>
-                         <td className="px-4 py-3 whitespace-nowrap">
-                           <div className="flex items-center space-x-1">
-                             <button 
-                               title="Subir Nueva Versión" 
-                               onClick={() => {setDocumentForVersionModal(doc.id); setIsUploadVersionModalOpen(true);}}
-                               className="p-1.5 text-teal-500 hover:bg-teal-100 rounded-full"
-                             >
-                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.338 2.166c1.552.322 2.81 1.526 2.81 3.111A2.625 2.625 0 0 1 18.75 19.5H6.75Z" />
-                               </svg>
-                             </button>                             <button 
-                               title="Eliminar Documento" 
-                               onClick={() => handleDeleteDocument(doc.id)}
-                               className="p-1.5 text-red-600 hover:bg-red-100 rounded-full"
-                             >
-                               <TrashIcon />
-                             </button>
-                           </div>
-                         </td>
-                       </tr>
-               
-                       {expandedDocumentVersions[doc.id] && (
-                         <tr key={`${doc.id}-versions-row`} className="bg-slate-50"> 
-                           <td colSpan={5} className="p-0"> 
-                             <div className="px-6 py-3 border-t border-gray-200">
-                               {versionsLoading[doc.id] && <div className="py-2"><Loader text="Cargando versiones..." /></div>}
-                               {versionsError[doc.id] && <p className="text-xs text-red-600 py-2">{versionsError[doc.id]}</p>}
-                               {!versionsLoading[doc.id] && !versionsError[doc.id] && loadedVersions[doc.id] && loadedVersions[doc.id].length > 0 && (
-                                 <div>
-                                   <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Versiones:</h4>
-                                   <ul className="space-y-1.5 text-xs">                                     {loadedVersions[doc.id].map(version => (                                       <li key={version.idversion} className="p-1.5 bg-white border border-gray-200 rounded-md shadow-sm">
-                                         <div className="flex justify-between items-center">
-                                             <div className="flex-grow">
-                                                 <span className="font-medium text-gray-800">V{version.versionNumber}</span> - 
-                                                 <span className="font-mono text-blue-700 ml-1">{version.dropboxFileId}</span>
-                                                 {version.comments && <p className="italic text-gray-600 mt-0.5 text-[11px]">"{version.comments}"</p>}
-                                                 <p className="text-gray-500 text-[11px]">
-                                                     Subido por: {version.uploadedBy?.names || 'N/A'} - {version.uploadedAt ? new Date(version.uploadedAt).toLocaleString() : 'N/A'}
-                                                 </p>
-                                             </div>
-                                             <div className="flex items-center space-x-2 ml-4">
-                                               <VersionActionButtons
-                                                 version={version}
-                                                 documentName={doc.name}
-                                                 onDelete={() => handleDeleteVersion(version.idversion)}
-                                                 showDeleteButton={true}
-                                                 size="sm"
-                                               />
-                                             </div>
-                                         </div>
-                                       </li>
-                                     ))}
-                                   </ul>
-                                 </div>
-                               )}
-                               {!versionsLoading[doc.id] && !versionsError[doc.id] && loadedVersions[doc.id] && loadedVersions[doc.id].length === 0 && (
-                                 <p className="text-xs text-gray-500 py-2">Este documento no tiene versiones registradas.</p>
-                               )}
-                             </div>
-                           </td>
-                         </tr>
-                       )}
-                     </Fragment>
-                   ))}
-                 </tbody>
+                    {filteredDocuments.map(doc => (
+                      <Fragment key={doc.id}>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="px-2 py-3 text-center">
+                            <button onClick={() => toggleDocumentVersions(doc.id)} className="p-1 text-gray-400 hover:text-blue-600 rounded-full focus:outline-none" title={expandedDocumentVersions[doc.id] ? "Ocultar versiones" : "Mostrar versiones"}>
+                              {expandedDocumentVersions[doc.id] ? <ChevronDoubleUpIcon /> : <ChevronDoubleDownIcon />}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-700">{doc.codigo}</td>
+                          <td className="px-4 py-3 text-gray-700 min-w-[200px]">{doc.name}</td>
+                          <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={doc.description || ''}>
+                            {doc.description || <span className="text-gray-400 italic">Sin descripción</span>}
+                          </td>
+                           <td className="px-4 py-3 text-gray-700">
+                            {doc.assignedTo ? `${doc.assignedTo.names} ${doc.assignedTo.lastnames}` : <span className="text-gray-400 italic">N/A</span>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            {doc.dueDate ? new Date(doc.dueDate + 'T00:00:00').toLocaleDateString('es-ES') : <span className="text-gray-400 italic">N/A</span>}
+                          </td>
+
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center space-x-1">
+                              <button title="Editar Documento" onClick={() => { setDocumentToEdit(doc); setIsEditDocumentModalOpen(true); }} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full"><PencilIcon/></button>
+                              <button title="Subir Nueva Versión" onClick={() => { setDocumentForVersionModal(doc.id); setIsUploadVersionModalOpen(true); }} className="p-1.5 text-teal-500 hover:bg-teal-100 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.338 2.166c1.552.322 2.81 1.526 2.81 3.111A2.625 2.625 0 0 1 18.75 19.5H6.75Z" /></svg></button>
+                              <button title="Eliminar Documento" onClick={() => handleDeleteDocument(doc.id)} className="p-1.5 text-red-600 hover:bg-red-100 rounded-full"><TrashIcon /></button>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {expandedDocumentVersions[doc.id] && (
+                          <tr key={`${doc.id}-versions-row`} className="bg-slate-50">
+                            <td colSpan={7} className="p-0">
+                              <div className="px-6 py-3 border-t border-gray-200">
+                                {versionsLoading[doc.id] && <div className="py-2"><Loader text="Cargando versiones..." /></div>}
+                                {versionsError[doc.id] && <p className="text-xs text-red-600 py-2">{versionsError[doc.id]}</p>}
+                                {!versionsLoading[doc.id] && !versionsError[doc.id] && loadedVersions[doc.id] && loadedVersions[doc.id].length > 0 && (
+                                  <div>
+                                    <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Versiones:</h4>
+                                    <ul className="space-y-1.5 text-xs">
+                                      {loadedVersions[doc.id].map(version => (
+                                        <li key={version.idversion} className="p-1.5 bg-white border border-gray-200 rounded-md shadow-sm">
+                                          <div className="flex justify-between items-center">
+                                            <div className="flex-grow">
+                                              <span className="font-medium text-gray-800">V{version.versionNumber}</span>
+                                              {version.comments && <p className="italic text-gray-600 mt-0.5 text-[11px]">"{version.comments}"</p>}
+                                              <p className="text-gray-500 text-[11px]">Subido por: {version.uploadedBy?.names || 'N/A'} - {version.uploadedAt ? new Date(version.uploadedAt).toLocaleString() : 'N/A'}</p>
+                                            </div>
+                                            <div className="flex items-center space-x-2 ml-4">
+                                              <button title="Editar Comentarios" onClick={() => { setVersionToEdit(version); setIsEditVersionModalOpen(true); }} className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-full"><PencilIcon/></button>
+                                              <VersionActionButtons version={version} documentId={doc.id} projectId={projectId} documentName={doc.name} currentUser={user || null} onDelete={() => handleDeleteVersion(version.idversion)} showDeleteButton={true} size="sm" />
+                                            </div>
+                                          </div>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                                {!versionsLoading[doc.id] && !versionsError[doc.id] && loadedVersions[doc.id] && loadedVersions[doc.id].length === 0 && (
+                                  <p className="text-xs text-gray-500 py-2">Este documento no tiene versiones registradas.</p>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
+                  </tbody>
                 </table>
+                 </div>
               </div>
             ) : (
               <div className="text-center py-10 bg-white rounded-lg shadow-md">
                 <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-4 text-lg text-gray-500">
-                  {documentSearchTerm ? 'No hay documentos que coincidan.' : 'Esta carpeta está vacía.'}
-                </p>
-                {selectedFolderId && (
-                  <button
-                    onClick={() => { setFolderForDocumentModal(selectedFolderId); setIsCreateDocumentModalOpen(true); }}
-                    className="mt-4 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 shadow-sm"
-                  > + Crear Documento Aquí </button>
-                )}
+                <p className="mt-4 text-lg text-gray-500">{documentSearchTerm ? 'No hay documentos que coincidan.' : 'Esta carpeta está vacía.'}</p>
+                {selectedFolderId && (<button onClick={() => { setFolderForDocumentModal(selectedFolderId); setIsCreateDocumentModalOpen(true); }} className="mt-4 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 shadow-sm">+ Crear Documento Aquí</button>)}
               </div>
             )
           ) : (
-              <div className="text-center py-10 bg-white rounded-lg shadow-md">
-                  <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-4 text-lg text-gray-500">
-                      Seleccione una carpeta para ver su contenido.
-                  </p>
-              </div>
+            <div className="text-center py-10 bg-white rounded-lg shadow-md">
+              <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-4 text-lg text-gray-500">Seleccione una carpeta para ver su contenido.</p>
+            </div>
           )}
         </div>
       </div>
     </>
   );
 }
+
+
 
 const UserCard = ({ projectUser, canManageRoles, onRoleChange, onRemoveUser }) => {
   const user = projectUser.user; 
@@ -693,35 +666,25 @@ const UserCard = ({ projectUser, canManageRoles, onRoleChange, onRemoveUser }) =
 };
 
 
-function MembersView({ projectId }) {
-  const [members, setMembers] = useState([]);
-  const [loadingMembers, setLoadingMembers] = useState(true);
-  const [membersError, setMembersError] = useState('');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+function MembersView({ projectId, projectMembers , onDataChange }) {
+  const apiUrl = 'https://localhost:8080';
   const [isInviteUserModalOpen, setIsInviteUserModalOpen] = useState(false);
   const [isDeletedUsersViewOpen, setIsDeletedUsersViewOpen] = useState(false);
+  
+  
+  const [members, setMembers] = useState(projectMembers);
 
   
+useEffect(() => {
+    setMembers(projectMembers);
+  }, [projectMembers]);
+
   const { canInviteUsers, userRole, loading: permissionsLoading, error: permissionsError } = useProjectPermissions(projectId);
 
-  
   const canManageRoles = userRole === 'ADMIN';
 
-  const fetchMembers = useCallback(async () => {
-    if (!projectId) return;
-    setLoadingMembers(true);
-    setMembersError('');
-    try {
-      const response = await axios.get(`${apiUrl}/api/projects/${projectId}/users`, { withCredentials: true });
-      setMembers(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      setMembersError(err.response?.data?.error || err.response?.data?.message || "Error al cargar integrantes.");
-      console.error("Error fetching project members:", err);
-      setMembers([]);
-    } finally {
-      setLoadingMembers(false);
-    }
-  }, [projectId, apiUrl]);
+
+
   const handleRoleChange = async (projectUser, newRole) => {
     try {
       const payload = {
@@ -738,13 +701,11 @@ function MembersView({ projectId }) {
 
 
       
-      setMembers(prevMembers => 
-        prevMembers.map(member => 
-          member.user.iduser === projectUser.user.iduser 
-            ? { ...member, roleCode: newRole }
-            : member
-        )
-      );
+  setMembers(prevMembers => 
+            prevMembers.map(member => 
+                member.user.iduser === projectUser.user.iduser ? { ...member, roleCode: newRole } : member
+            )
+        );
 
       
       const roleNames = {
@@ -773,8 +734,8 @@ function MembersView({ projectId }) {
       
       alert(`❌ Error: ${errorMessage}`);
       
-      
-      fetchMembers();
+       onDataChange();
+    
     }
   };  
   
@@ -786,9 +747,9 @@ function MembersView({ projectId }) {
       );
 
       
-      setMembers(prevMembers => 
-        prevMembers.filter(member => member.user.iduser !== projectUser.user.iduser)
-      );
+       setMembers(prevMembers => 
+            prevMembers.filter(member => member.user.iduser !== projectUser.user.iduser)
+        );
 
       alert(`✅ Usuario eliminado exitosamente.\n${projectUser.user.names} ${projectUser.user.lastnames} ha sido removido del proyecto.`);
       
@@ -810,8 +771,8 @@ function MembersView({ projectId }) {
       
       alert(`❌ Error: ${errorMessage}`);
       
-      
-      fetchMembers();
+       onDataChange();
+   
     }
   };
 
@@ -852,9 +813,7 @@ function MembersView({ projectId }) {
     }
   };
 
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
+ 
 
   const handleUserInvited = (invitationDetails) => {
     console.log("Frontend: Detalles de la invitación creada:", invitationDetails);
@@ -864,27 +823,21 @@ function MembersView({ projectId }) {
         alert("Invitación enviada exitosamente. El usuario debe aceptarla.");
     }
     
-    fetchMembers();
+    
   };
 
   
-  if (permissionsLoading || loadingMembers) {
-    return <Loader text="Cargando datos del proyecto..." />;
+ if (permissionsLoading) {
+    return <Loader text="Cargando permisos..." />;
   }
 
   
   if (permissionsError) {
-    return (
-      <div className="p-4 text-center text-red-600 bg-red-100 rounded-md">
-        {permissionsError}
-      </div>
-    );
+    return <div className="p-4 text-center text-red-600 bg-red-100 rounded-md">{permissionsError}</div>;
   }
 
   
-  if (membersError) {
-    return <p className="text-center p-4 text-red-600 bg-red-100 rounded-md">{membersError}</p>;
-  }
+
 
   return (
     <>
@@ -937,7 +890,8 @@ function MembersView({ projectId }) {
         </div>
       </div><div className="space-y-4">
         {members.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">            {members.map((projectUser) => ( 
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">            
+           {members.map((projectUser) => ( 
               <UserCard 
                 key={projectUser.id} 
                 projectUser={projectUser} 
@@ -969,11 +923,33 @@ function ProjectDetailContent() {
   const { user, loading: authLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState('documentation');
-  const [projectDetails, setProjectDetails] = useState(null);
+  const [projectDetails, setProjectDetails] = useState(null); 
   const [projectLoading, setProjectLoading] = useState(true);
   const [projectError, setProjectError] = useState('');
+  
+  const [projectMembers, setProjectMembers] = useState([]);
 
   const projectId = searchParams.get('projectId');
+
+   const apiUrl = 'https://localhost:8080';
+
+
+     const fetchMembers = useCallback(async () => {
+    if (!projectId || !user) return;
+    try {
+      const response = await axios.get(`${apiUrl}/api/projects/${projectId}/users`, { withCredentials: true });
+      setProjectMembers(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Error fetching project members:", error);
+      
+    }
+  }, [projectId, user, apiUrl]);
+
+  
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
+
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -981,43 +957,44 @@ function ProjectDetailContent() {
     }
   }, [user, authLoading, router]);
 
+
+
+   
+
   useEffect(() => {
-    if (!projectId) { 
-        if (!authLoading && user) { 
-            setProjectError("ID de proyecto no especificado en la URL.");
-            setProjectLoading(false);
-        } else if (!authLoading && !user){
-         
-        }
-        return;
+    if (!projectId) {
+      if (!authLoading && user) {
+        setProjectError("ID de proyecto no especificado en la URL.");
+        setProjectLoading(false);
+      }
+      return;
     }
-    
 
     if (authLoading || !user) return;
 
-
-    setProjectLoading(true);
-    setProjectError('');
     const fetchProjectDetails = async () => {
+      setProjectLoading(true);
+      setProjectError('');
       try {
-   
-        const projectNameFromQuery = searchParams.get('projectName');
-        if (!projectNameFromQuery) console.warn("projectName no encontrado en query params, usando placeholder.");
-        
-        setProjectDetails({ 
-            id: projectId, 
-            name: decodeURIComponent(projectNameFromQuery || `Proyecto ID: ${projectId}`),
-        });
+        const response = await axios.get(`${apiUrl}/api/projects/${projectId}`, { withCredentials: true });
+        setProjectDetails(response.data); 
       } catch (err) {
-        setProjectError(err.response?.data?.error || err.response?.data?.message || "Error al cargar detalles del proyecto.");
+        if (err.response?.status === 403) {
+            setProjectError("No tienes permiso para ver este proyecto.");
+        } else if (err.response?.status === 404) {
+            setProjectError("Proyecto no encontrado. Puede que haya sido eliminado.");
+        } else {
+            setProjectError("Error al cargar los detalles del proyecto.");
+        }
         console.error("Error fetching project details:", err);
         setProjectDetails(null);
       } finally {
         setProjectLoading(false);
       }
     };
+    
     fetchProjectDetails();
-  }, [projectId, searchParams, authLoading, user, router]);
+  }, [projectId, authLoading, user, apiUrl, router]);
 
 
   if (authLoading) return <Loader text="Verificando sesión..." />;
@@ -1066,17 +1043,23 @@ function ProjectDetailContent() {
               Papelera
             </button>
           </nav>
-        </div>        <div>
-          {activeTab === 'documentation' && projectDetails.id && <EnhancedDocumentationView projectId={projectDetails.id} />}
-          {activeTab === 'members' && projectDetails.id && <MembersView projectId={projectDetails.id} />}          {activeTab === 'recycle' && projectDetails.id && (
-            <RecyclingBinView 
-              projectId={projectDetails.id} 
-              onItemRestored={() => {
-                
-                console.log('Item restored - may need to refresh documentation view');
-              }}
-            />
-          )}
+        </div>        
+        <div>
+   
+           {activeTab === 'documentation' && projectDetails?.idproject && 
+            <EnhancedDocumentationView projectId={projectDetails.idproject} projectMembers={projectMembers} />
+          }
+            {activeTab === 'members' && projectDetails?.idproject && 
+        <MembersView 
+          projectId={projectDetails.idproject} 
+          projectMembers={projectMembers}
+          onDataChange={fetchMembers} 
+        />
+      }
+          {activeTab === 'recycle' && projectDetails?.idproject && 
+            <RecyclingBinView projectId={projectDetails.idproject} onItemRestored={() => { console.log('Item restored - may need to refresh documentation view');}}/>
+          }
+
         </div>
       </div>
     </div>

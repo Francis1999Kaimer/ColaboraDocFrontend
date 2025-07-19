@@ -10,7 +10,7 @@ export default function UploadVersionModal({ isOpen, onClose, documentId, onVers
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -24,6 +24,8 @@ export default function UploadVersionModal({ isOpen, onClose, documentId, onVers
       setError('');
     }
   };
+
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();

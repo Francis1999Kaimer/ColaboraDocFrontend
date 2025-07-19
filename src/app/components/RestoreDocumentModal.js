@@ -69,7 +69,7 @@ export default function RestoreDocumentModal({
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [originalLocation, setOriginalLocation] = useState(null);
   const [restoreType, setRestoreType] = useState('document'); 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   
   const findOriginalLocation = (folders, parentFolderId, path = []) => {

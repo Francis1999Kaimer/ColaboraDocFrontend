@@ -50,7 +50,7 @@ export default function DeletedDocumentsView({ projectId, onDocumentRestored }) 
   const [permanentlyDeletingDocuments, setPermanentlyDeletingDocuments] = useState(new Set());
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [selectedDocumentForRestore, setSelectedDocumentForRestore] = useState(null);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const apiUrl = 'https://localhost:8080';
 
   const fetchDeletedDocuments = useCallback(async () => {
     if (!projectId) return;

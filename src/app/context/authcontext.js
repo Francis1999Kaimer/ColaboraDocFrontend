@@ -13,19 +13,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
-
+  const apiUrl =  'https://localhost:8080';
 
   const checkUserLoggedIn = async () => {
     setLoading(true);
     try {
-    
       const res = await axios.get(`${apiUrl}/api/auth/me`, {
         withCredentials: true,
       });
       if (res.data && res.data.email) {
         setUser(res.data);
-
         localStorage.setItem('user', JSON.stringify(res.data));
       } else {
         setUser(null);
@@ -35,14 +32,12 @@ export const AuthProvider = ({ children }) => {
       console.warn('AuthContext: No user session found or error fetching /me', error.response?.data || error.message);
       setUser(null);
       localStorage.removeItem('user');
- 
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
         try {
@@ -59,7 +54,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
@@ -74,7 +68,6 @@ export const AuthProvider = ({ children }) => {
       console.log('AuthContext: Logout successful on backend.');
     } catch (err) {
       console.error('AuthContext: Error during backend logout:', err.response?.data || err.message);
- 
     } finally {
       setUser(null);
       localStorage.removeItem('user');

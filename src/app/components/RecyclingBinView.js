@@ -43,7 +43,7 @@ export default function RecyclingBinView({ projectId, onItemRestored }) {
   const [activeTab, setActiveTab] = useState('folders');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';  const handleItemRestored = () => {
+  const apiUrl = 'https://localhost:8080';  const handleItemRestored = () => {
     
     if (onItemRestored) {
       onItemRestored();

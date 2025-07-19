@@ -1,12 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import documentDownloadService from '../../services/DocumentDownloadService';
-
-
-const PencilIcon = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-4 w-4 ${props.className || ''}`}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-  </svg>
-);
 
 const ArrowDownTrayIcon = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-4 w-4 ${props.className || ''}`}>
@@ -20,51 +14,51 @@ const TrashIcon = (props) => (
   </svg>
 );
 
+const PencilIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props} className={`h-4 w-4 ${props.className || ''}`}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+  </svg>
+);
+
 const VersionActionButtons = ({ 
   version, 
   documentId, 
   projectId,
   currentUser,
   documentName,
-  onAnnotate,
   onDownload,
   onDelete,
   disabled = false,
   className = ""
 }) => {
   const [downloading, setDownloading] = useState(false);
-  const [annotateLoading, setAnnotateLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const router = useRouter();
 
   
-  const handleAnnotate = async () => {
-    if (disabled || annotateLoading) return;
-
-    try {
-      setAnnotateLoading(true);
-      
-      if (onAnnotate) {
-        await onAnnotate(version);      } else {
-        
-        const versionId = version.id || version.idversion;
-        const annotateDocumentName = documentName || `Versión ${version.versionNumber}`;
-        const documentUrl = `${apiUrl}/api/versions/${versionId}/download`;
-        
-        
-        const annotateUrl = `/annotate?versionId=${versionId}&documentUrl=${encodeURIComponent(documentUrl)}&documentName=${encodeURIComponent(annotateDocumentName)}`;
-        window.open(annotateUrl, '_blank');
-      }    } catch (error) {
-      console.error('Error opening annotation app:', error);
-      alert('Error al abrir el sistema de anotaciones');
-    } finally {
-      setAnnotateLoading(false);
-    }
+  const isPdfFile = (version) => {
+    if (!version) return false;
+    return version.mimeType === 'application/pdf';
   };
-  
-  const handleDownload = async () => {
-    if (disabled || downloading) return;
 
+  const handleAnnotate = () => {
+    if (!version || !isPdfFile(version)) return;
+    
+    
+    const versionDocumentId = version.documentId || version.document?.iddocument || documentId;
+    
+    
+    const params = new URLSearchParams({
+      versionId: version.idversion,
+      documentId: versionDocumentId,
+      projectId: projectId
+    });
+    
+    router.push(`/annotations?${params.toString()}`);
+  };
+
+  const handleDownload = async () => {
+    if (!version || downloading) return;
+    
     try {
       setDownloading(true);
       
@@ -72,95 +66,98 @@ const VersionActionButtons = ({
         await onDownload(version);
       } else {
         
-        const versionId = version.id || version.idversion;
-        const options = {
-          documentName: documentName,
-          versionNumber: version.versionNumber
-        };
-        
-        await documentDownloadService.downloadVersion(versionId, options);
+        await documentDownloadService.downloadVersion(
+          version.idversion,
+          documentName || `Documento_v${version.versionNumber}`
+        );
       }
     } catch (error) {
       console.error('Error downloading document:', error);
-      alert(`Error al descargar el documento: ${error.message}`);
     } finally {
       setDownloading(false);
-    }  };
-  
-  
-  const handleDelete = async () => {
-    if (disabled || deleting) return;
-
-    try {
-      setDeleting(true);
-      
-      if (onDelete) {
-        await onDelete(version);
-      } else {
-        
-        console.log('Delete version:', version);
-      }
-    } catch (error) {
-      console.error('Error deleting version:', error);
-      alert(`Error al eliminar la versión: ${error.message}`);
-    } finally {
-      setDeleting(false);
     }
   };
-  
-  
-  
-  const isPDF = documentDownloadService.supportsAnnotations(version.mimeType) ||
-               version.dropboxFileId?.toLowerCase().endsWith('.pdf') ||
-               version.filename?.toLowerCase().endsWith('.pdf') ||
-               version.documentName?.toLowerCase().endsWith('.pdf');
-  return (
-    <div className={`flex items-center space-x-1 ${className}`}>
-      
-      {isPDF && (
-        <button
-          onClick={handleAnnotate}
-          disabled={disabled || annotateLoading}
-          className="flex items-center space-x-1 px-2 py-1 text-xs text-green-700 bg-green-100 border border-green-300 rounded hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          title="Anotar documento (solo PDF)"
-        >
-          {annotateLoading ? (
-            <div className="w-3 h-3 border-2 border-green-700 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <PencilIcon />
-          )}
-          <span className="hidden sm:inline">{annotateLoading ? 'Abriendo...' : 'Anotar'}</span>
-        </button>
-      )}
 
+  const handleDelete = async () => {
+    if (!version || !onDelete) return;
+    
+    const confirmed = window.confirm(
+      `¿Estás seguro de que quieres eliminar la versión ${version.versionNumber}? Esta acción no se puede deshacer.`
+    );
+    
+    if (confirmed) {
+      try {
+        await onDelete(version);
+      } catch (error) {
+        console.error('Error deleting version:', error);
+      }
+    }
+  };
+
+  
+  const canDownload = !disabled && version;
+  const canDelete = !disabled && version && onDelete && currentUser;
+  const canAnnotate = !disabled && version && isPdfFile(version);
+
+  return (
+    <div className={`flex items-center space-x-2 ${className}`}>
       
       <button
         onClick={handleDownload}
-        disabled={disabled || downloading}
-        className="flex items-center space-x-1 px-2 py-1 text-xs text-purple-700 bg-purple-100 border border-purple-300 rounded hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        title="Descargar archivo"
+        disabled={!canDownload || downloading}
+        className={`
+          flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200
+          ${canDownload && !downloading
+            ? 'text-green-700 bg-green-100 hover:bg-green-200 hover:text-green-800 focus:ring-2 focus:ring-green-500 focus:ring-offset-1'
+            : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+          }
+          ${downloading ? 'opacity-70' : ''}
+        `}
+        title={canDownload ? "Descargar documento" : "No disponible"}
       >
         {downloading ? (
-          <div className="w-3 h-3 border-2 border-purple-700 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-4 h-4 mr-2 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
         ) : (
-          <ArrowDownTrayIcon />        )}
-        <span className="hidden sm:inline">{downloading ? 'Descargando...' : 'Descargar'}</span>
+          <ArrowDownTrayIcon className="mr-2" />
+        )}
+        {downloading ? 'Descargando...' : 'Descargar'}
       </button>
 
       
       <button
-        onClick={handleDelete}
-        disabled={disabled || deleting}
-        className="flex items-center space-x-1 px-2 py-1 text-xs text-red-700 bg-red-100 border border-red-300 rounded hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        title="Eliminar versión"
+        onClick={handleAnnotate}
+        disabled={disabled || !canAnnotate}
+        className={`
+          flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200
+          ${canAnnotate && !disabled
+            ? 'text-blue-700 bg-blue-100 hover:bg-blue-200 hover:text-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+            : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+          }
+        `}
+        title={canAnnotate ? "Anotar documento PDF" : "Solo disponible para archivos PDF"}
       >
-        {deleting ? (
-          <div className="w-3 h-3 border-2 border-red-700 border-t-transparent rounded-full animate-spin"></div>
-        ) : (
-          <TrashIcon />
-        )}
-        <span className="hidden sm:inline">{deleting ? 'Eliminando...' : 'Eliminar'}</span>
+        <PencilIcon className="mr-2" />
+        Anotar
       </button>
+
+      
+      {canDelete && (
+        <button
+          onClick={handleDelete}
+          disabled={disabled}
+          className={`
+            flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200
+            ${!disabled
+              ? 'text-red-700 bg-red-100 hover:bg-red-200 hover:text-red-800 focus:ring-2 focus:ring-red-500 focus:ring-offset-1'
+              : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+            }
+          `}
+          title="Eliminar versión"
+        >
+          <TrashIcon className="mr-2" />
+          Eliminar
+        </button>
+      )}
     </div>
   );
 };

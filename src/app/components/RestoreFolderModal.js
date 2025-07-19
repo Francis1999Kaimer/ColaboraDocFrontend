@@ -60,7 +60,7 @@ export default function RestoreFolderModal({
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState('');
   const [expandedFolders, setExpandedFolders] = useState(new Set());
-  const [originalLocation, setOriginalLocation] = useState(null);  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:8080';
+  const [originalLocation, setOriginalLocation] = useState(null);  const apiUrl = 'https://localhost:8080';
 
   
   const findOriginalLocation = (folders, parentFolderId, path = []) => {
